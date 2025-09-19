@@ -6,6 +6,7 @@ import hdbscan
 import pandas as pd
 import stopwordsiso as stopwords
 from bertopic import BERTopic
+from lightlemma import lemmatize, tokenize
 from sklearn.feature_extraction.text import CountVectorizer
 from slugify import slugify
 
@@ -190,9 +191,13 @@ class ComputeBertopic(BaseTask):
             )
 
             # Vectorizer to manage stopwords
+            customLemmatizer=CustomLemmaTokenizer()
             try:
                 stopwords = self.get_stopwords()
-                vectorizer_model = CountVectorizer(stop_words=stopwords)
+                vectorizer_model = CountVectorizer(
+                    stop_words=stopwords,
+                    tokenizer=customLemmatizer
+                )
             except ValueError:
                 vectorizer_model = CountVectorizer()
 
@@ -227,8 +232,13 @@ class ComputeBertopic(BaseTask):
             # Add the topics to the DataFrame
             df["cluster"] = topics
 
+            # Revert lemmatization for easier reading
+            topic_info = topic_model.get_topic_info()
+            topic_info["Representation"] = topic_info["Representation"].\
+                apply(customLemmatizer.revert)
+
             # Save the topics and documents informations
-            topic_model.get_topic_info().to_csv(self.path_run.joinpath("bertopic_topics.csv"))
+            topic_info.to_csv(self.path_run.joinpath("bertopic_topics.csv"))
             df["cluster"].to_csv(self.path_run.joinpath("bertopic_clusters.csv"))
             parameters = {
                 "bertopic_params": self.parameters.model_dump(),
@@ -304,3 +314,29 @@ class ComputeBertopic(BaseTask):
         reduced_embeddings = reducer.fit_transform(embeddings)
         df_reduced = pd.DataFrame(reduced_embeddings, index=embeddings.index, columns=["x", "y"])
         df_reduced.to_parquet(path_projection)
+
+class CustomLemmaTokenizer(object):
+    """Custom english tokenizer and lemmatizer
+    For other languages, there is either no lemmatization (italian: tavoli -> tavoli)
+    or limited lemmatization (french: marquantes -> marquante)"""
+    def __init__(self) -> None :
+        # Memory is used to revert the lemmatization for readability
+        self.__memory = {} 
+
+    def __lemmatize_and_memorise(self, token) -> str:
+        lemma = lemmatize(token)
+        if token not in self.__memory:
+            self.__memory[lemma] = token
+        return lemma
+
+    def __call__(self, text) -> list[str]: 
+        return [self.__lemmatize_and_memorise(token) for token in tokenize(text)]
+    
+    def __remember(self, lemma) -> str: 
+        try : 
+            out += [self.__memory[lemma]]
+        except:
+            out += [lemma]
+
+    def revert(self, lemmas : list[str]):
+        return [self.__remember(lemma) for lemma in lemmas]
