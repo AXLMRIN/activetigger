@@ -1,4 +1,6 @@
 import { FC } from 'react';
+import { HiOutlineQuestionMarkCircle } from 'react-icons/hi';
+import { Tooltip } from 'react-tooltip';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { useComputeBertopic, useStopProcesses } from '../../core/api';
 import { ComputeBertopicModel } from '../../types';
@@ -44,6 +46,35 @@ export const BertopicForm: FC<BertopicCreationFormProps> = ({
           </label>
           <input className="form-control" id="name" type="text" {...register('name')} />
         </div>
+        <label className="form-label" htmlFor="min_topic_size">
+          Min topic size
+          <a className="min-topic-size-help">
+            <HiOutlineQuestionMarkCircle />
+          </a>
+          <Tooltip anchorSelect=".min-topic-size-help" place="top" style={{ zIndex: 99 }}>
+            This is the minimum size for a topic to exist. This depends on the size of your dataset.
+            Low values means many topics (micro-clusters) while high values mean few general topics.
+            <br />
+            If a cluster returned by HDBSCAN is smaller than this value, elements reinstated into
+            other topics.
+          </Tooltip>
+          <input
+            className="form-control"
+            id="minTopicSize"
+            type="number"
+            {...register('min_topic_size')}
+          />
+        </label>
+        <label className="form-label" htmlFor="embedding_model">
+          Embedding model
+          <select className="form-select" {...register('embedding_model')}>
+            {availableModels.map((model) => (
+              <option key={model} value={model}>
+                {model}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <details className="custom-details">
           <summary>Advanced parameters</summary>
@@ -66,23 +97,13 @@ export const BertopicForm: FC<BertopicCreationFormProps> = ({
             />
           </label>
           <label className="form-label" htmlFor="filter_text_length">
-            Filter text length lower than
+            Filter off text which length is under n characters
             <input
               className="form-control"
               id="filter_text_length"
               type="number"
               {...register('filter_text_length')}
             />
-          </label>
-          <label className="form-label" htmlFor="embedding_model">
-            Embedding model
-            <select className="form-select" {...register('embedding_model')}>
-              {availableModels.map((model) => (
-                <option key={model} value={model}>
-                  {model}
-                </option>
-              ))}
-            </select>
           </label>
           <label className="form-label" htmlFor="min_topic_size">
             Min topic size
@@ -112,7 +133,14 @@ export const BertopicForm: FC<BertopicCreationFormProps> = ({
             />
           </label>
           <label className="form-label" htmlFor="umap_n_neighbors">
-            UMAP n_neighbors
+            UMAP n_neighbors{' '}
+            <a className="umap-n-neighbor-help">
+              <HiOutlineQuestionMarkCircle />
+            </a>
+            <Tooltip anchorSelect=".umap-n-neighbor-help" place="top" style={{ zIndex: 99 }}>
+              Low values will force UMAP to focus on local structure whereas large values force it
+              to focus on global patterns.
+            </Tooltip>
             <input
               className="form-control"
               id="umap_n_neighbors"
@@ -120,7 +148,7 @@ export const BertopicForm: FC<BertopicCreationFormProps> = ({
               {...register('umap_n_neighbors')}
             />
           </label>
-          <label className="form-label" htmlFor="umap_n_components">
+          {/* <label className="form-label" htmlFor="umap_n_components">
             UMAP umap_n_components
             <input
               className="form-control"
@@ -128,8 +156,8 @@ export const BertopicForm: FC<BertopicCreationFormProps> = ({
               type="number"
               {...register('umap_n_components')}
             />
-          </label>
-          <label className="form-label" htmlFor="umap_min_dist">
+          </label> */}
+          {/* <label className="form-label" htmlFor="umap_min_dist">
             UMAP umap_min_dist
             <input
               className="form-control"
@@ -138,7 +166,7 @@ export const BertopicForm: FC<BertopicCreationFormProps> = ({
               step="any"
               {...register('umap_min_dist')}
             />
-          </label>
+          </label> */}
         </details>
 
         {!isComputing && (
