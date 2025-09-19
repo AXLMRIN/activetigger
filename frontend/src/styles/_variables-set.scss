@@ -98,7 +98,7 @@ $quaternary: #faf9f8;
 .table-statistics {
   width: 80%;
   border-collapse: collapse;
-  margin-top: 20px;
+  margin: 20px 0px;
 }
 
 .table-statistics th,
@@ -306,3 +306,6 @@ $quaternary: #faf9f8;
   color: red;
 }
 
+.projection-wrapper{
+  margin: 16px 0px;
+}
