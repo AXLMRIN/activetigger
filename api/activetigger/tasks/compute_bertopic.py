@@ -334,9 +334,9 @@ class CustomLemmaTokenizer(object):
     
     def __remember(self, lemma) -> str: 
         try : 
-            out += [self.__memory[lemma]]
+            return self.__memory[lemma]
         except:
-            out += [lemma]
+            return lemma
 
     def revert(self, lemmas : list[str]):
         return [self.__remember(lemma) for lemma in lemmas]
