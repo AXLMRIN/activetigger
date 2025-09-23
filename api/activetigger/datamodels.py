@@ -962,9 +962,19 @@ class ProjectCreatingModel(BaseModel):
     status: str
 
 
+class BertopicParameters(BaseModel):
+    bertopic_params : BertopicParamsModel
+    col_text: str
+    col_id: str
+    name: str
+    timestamp: str
+    path_data: str
+    path_embeddings: str
+    path_projection: str
+    
 class BertopicTopicsOutModel(BaseModel):
     topics: list
-    parameters: dict[str, Any]
+    parameters: BertopicParameters
 
 
 class DatasetModel(BaseModel):

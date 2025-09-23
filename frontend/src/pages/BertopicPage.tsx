@@ -53,7 +53,7 @@ export const BertopicPage: FC = () => {
     (id?: string) => {
       if (id)
         getElementById(id, 'train').then((res) =>
-          setCurrentText(String(id) + ': ' + res?.text || null),
+          setCurrentText('(id: ' + String(id) + ') ' + res?.text || null),
         );
       else setCurrentText(null);
     },
@@ -138,14 +138,60 @@ export const BertopicPage: FC = () => {
                   </button>
                   <details>
                     <summary>Parameters</summary>
-                    {parameters && JSON.stringify(parameters, null, 2)}
+                    {/* {parameters && JSON.stringify(parameters, null, 2)*/}
+                    <h4 className="subsection">BERTopic</h4>
+                    <ul className="list-group">
+                      <li className="list-group-item">
+                        <b>Minimum topic size:</b> {parameters?.bertopic_params.min_topic_size}
+                      </li>
+                      <li className="list-group-item">
+                        <b>Number of topics:</b> {parameters?.bertopic_params.nr_topics}
+                      </li>
+                      <li className="list-group-item">
+                        <b>Outlier reduction:</b>{' '}
+                        {parameters?.bertopic_params.outlier_reduction ? 'True' : 'False'}
+                      </li>
+                      <li className="list-group-item">
+                        <b>Filter off texts under n characters:</b>{' '}
+                        {parameters?.bertopic_params.filter_text_length}
+                      </li>
+                    </ul>
+                    <h4 className="subsection">Embedding model</h4>
+                    <ul className="list-group">
+                      <li className="list-group-item">
+                        <b>Name:</b> {parameters?.bertopic_params.embedding_model}
+                      </li>
+                      <li className="list-group-item">
+                        <b>Language:</b> {parameters?.bertopic_params.language}
+                      </li>
+                    </ul>
+                    <h4 className="subsection">Clustering Model (HDBSCAN)</h4>
+                    <ul className="list-group">
+                      <li className="list-group-item">
+                        <b>Minimum cluster size:</b>{' '}
+                        {parameters?.bertopic_params.hdbscan_min_cluster_size}
+                      </li>
+                    </ul>
+                    <h4 className="subsection">Dimension reduction Model (UMAP)</h4>
+                    <ul className="list-group">
+                      <li className="list-group-item">
+                        <b>Number of neighbors:</b> {parameters?.bertopic_params.umap_n_neighbors}
+                      </li>
+                      <li className="list-group-item">
+                        <b>Number of dimensions:</b> {parameters?.bertopic_params.umap_n_components}
+                      </li>
+                      <li className="list-group-item">
+                        <b>Minimum distance between points:</b>{' '}
+                        {parameters?.bertopic_params.umap_min_dist}
+                      </li>
+                    </ul>
                   </details>
                 </div>
               )}
 
               {projection && (
                 <>
-                  <div style={{ height: '300px' }}>
+                  <div className="projection-wrapper" style={{ height: '300px' }}>
                     <BertopicVizSigma
                       className={`col-12 border h-100`}
                       data={
