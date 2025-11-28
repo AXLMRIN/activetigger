@@ -52,7 +52,7 @@ export const DisplayTableStatistics: FC<DisplayTableStatisticsProps> = ({ scores
   };
 
   const limitLabelSize = (label: string) => {
-    const maxLength = widthWindow > 1000 ? 8 : widthWindow > 500 ? 5 : 4;
+    const maxLength = widthWindow > 1000 ? 15 : widthWindow > 500 ? 5 : 4;
     if (label) {
       if (label.length > maxLength) {
         return label.slice(0, maxLength - 3) + '..' + label.slice(-1);
