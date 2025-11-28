@@ -1,4 +1,4 @@
-import { Dispatch, FC, SetStateAction } from 'react';
+import { Dispatch, FC, SetStateAction, useEffect, useState } from 'react';
 import { Controller, SubmitHandler, useForm } from 'react-hook-form';
 import { HiOutlineQuestionMarkCircle } from 'react-icons/hi';
 import Select from 'react-select';
@@ -30,6 +30,7 @@ export const ModelCreationForm: FC<ModelCreationFormProps> = ({
 }) => {
   // form to train a model
   const { trainBertModel } = useTrainBertModel(projectSlug || null, currentScheme || null);
+  const [disableMaxLengthInput, setDisableMaxLengthInput] = useState<boolean>(true);
   // available base models suited for the project : sorted by language + priority
   const filteredModels = ((project?.languagemodels.options as unknown as BertModel[]) ?? [])
     .sort((a, b) => b.priority - a.priority)
@@ -63,6 +64,7 @@ export const ModelCreationForm: FC<ModelCreationFormProps> = ({
   const {
     handleSubmit: handleSubmitNewModel,
     register: registerNewModel,
+    watch,
     control,
   } = useForm<newBertModel>({
     defaultValues: {
@@ -72,6 +74,7 @@ export const ModelCreationForm: FC<ModelCreationFormProps> = ({
       class_min_freq: 1,
       test_size: 0.2,
       max_length: 512,
+      auto_max_length: false,
       parameters: {
         batchsize: 4,
         gradacc: 4.0,
@@ -85,6 +88,11 @@ export const ModelCreationForm: FC<ModelCreationFormProps> = ({
       },
     },
   });
+
+  const autoMaxLengthValue = watch('auto_max_length');
+  useEffect(() => {
+    setDisableMaxLengthInput(autoMaxLengthValue);
+  }, [autoMaxLengthValue]);
 
   const onSubmitNewModel: SubmitHandler<newBertModel> = async (data) => {
     // setActiveKey('models');
@@ -196,18 +204,34 @@ export const ModelCreationForm: FC<ModelCreationFormProps> = ({
       </div>
       <details className="custom-details">
         <summary>Advanced parameters for the model</summary>
-        <div>
-          <label>
-            Max context window (tokens){' '}
-            <a className="max_length">
-              <HiOutlineQuestionMarkCircle />
-            </a>
-            <Tooltip anchorSelect=".max_length" place="top">
-              Number of token before truncating (depend of the model)
-            </Tooltip>
-          </label>
-          <input type="number" step="1" {...registerNewModel('max_length')} />
-        </div>
+
+        <label style={{ flex: '0 1 30%' }}>
+          Auto adjust Max context window{' '}
+          <a className="optimum_max_length">
+            <HiOutlineQuestionMarkCircle />
+          </a>
+          <Tooltip anchorSelect=".optimum_max_length" place="top">
+            Number of token before truncating (depend of the model)
+          </Tooltip>
+          <input type="checkbox" {...registerNewModel('auto_max_length')} />
+        </label>
+        <label style={{ flex: '0 1 30%' }}>
+          Max context window (tokens){' '}
+          <a className="max_length">
+            <HiOutlineQuestionMarkCircle />
+          </a>
+          <Tooltip anchorSelect=".max_length" place="top">
+            Number of token before truncating (depend of the model)
+          </Tooltip>
+        </label>
+        <input
+          type="number"
+          step="1"
+          {...registerNewModel('max_length')}
+          style={{ flex: '0 0 10%' }}
+          disabled={disableMaxLengthInput}
+        />
+
         <div>
           <label>
             Batch Size{' '}
