@@ -78,7 +78,6 @@ export const ModelCreationForm: FC<ModelCreationFormProps> = ({
       best: true,
       eval: 10,
       gpu: true,
-      adapt: false,
     },
   });
 

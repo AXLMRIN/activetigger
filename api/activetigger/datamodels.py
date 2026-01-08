@@ -301,7 +301,6 @@ class LMParametersModel(BaseModel):
     best: bool = True
     eval: int = 10
     gpu: bool = False
-    adapt: bool = True
 
 
 class LMParametersModelTrained(LMParametersModel):

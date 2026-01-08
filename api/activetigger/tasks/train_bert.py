@@ -249,28 +249,17 @@ class TrainBert(BaseTask):
             .mean()
         )
 
-        if self.params.adapt:
-            self.df = self.df.map(
-                lambda e: tokenizer(
-                    e["text"],
-                    truncation=True,
-                    padding=True,
-                    return_tensors="pt",
-                    max_length=int(self.max_length),
-                ),
-                batched=True,
-            )
-        else:
-            self.df = self.df.map(
-                lambda e: tokenizer(
-                    e["text"],
-                    truncation=True,
-                    padding="max_length",
-                    return_tensors="pt",
-                    max_length=self.max_length,
-                ),
-                batched=True,
-            )
+        
+        self.df = self.df.map(
+            lambda e: tokenizer(
+                e["text"],
+                truncation=True,
+                padding="max_length",
+                return_tensors="pt",
+                max_length=self.max_length,
+            ),
+            batched=True,
+        )
 
         # Build train/test dataset for dev eval
         self.df = self.df.train_test_split(test_size=self.test_size)  # stratify_by_column="label"
