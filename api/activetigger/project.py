@@ -46,6 +46,7 @@ from activetigger.datamodels import (
     QuickModelInModel,
     StaticFileModel,
     UpdateComputing,
+    ReturnTaskTrainQuickModel,
 )
 from activetigger.db.manager import DatabaseManager
 from activetigger.features import Features
@@ -1452,7 +1453,17 @@ class Project:
                         self.languagemodels.add(prediction)
                     case "train_quickmodel":
                         sm = cast(QuickModelComputing, e)
-                        self.monitoring.close_process(sm.unique_id)
+                        
+                        # Retrieve the additional events if they exist
+                        results = cast(ReturnTaskTrainQuickModel, results)
+                        if isinstance(results.additional_events, dict):
+                            additional_events = results.additional_events
+                        else:
+                            additional_events = None
+
+                        self.monitoring.close_process(sm.unique_id, 
+                            additional_events=additional_events
+                        )
                         self.quickmodels.add(sm)
                     case "predict_quickmodel":
                         sm = cast(QuickModelComputing, e)
