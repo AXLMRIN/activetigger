@@ -13,7 +13,7 @@ from sklearn.model_selection import (  # type: ignore[import]
     cross_val_predict,
 )
 
-from activetigger.datamodels import MLStatisticsModel, QuickModelComputed
+from activetigger.datamodels import MLStatisticsModel, QuickModelComputed, ReturnTaskTrainQuickModel
 from activetigger.functions import evaluate_entropy, get_metrics
 from activetigger.tasks.base_task import BaseTask
 
@@ -196,13 +196,48 @@ class TrainML(BaseTask):
             )
         os.replace(path_to_metrics_json_tmp, path_to_metrics_json)
 
-    def __call__(self) -> None:
+    def __timing_additional_events(self, type : str, stage : str|None = None):
+        """This function centralises the timing component. The central object is
+        self.__additional_events, a dictionary that needs to be initiated and 
+        then collects all the time data (start, end, duration).
+        
+        This function could become a more general object for timing all tasks"""
+        match (type, stage): 
+            case ("init", None):
+                self.__additional_events = {
+                    "train": {"start":"FAILED", "end":"FAILED", "duration": "FAILED"}
+                }
+            
+            case ("start", "train"):
+                self.__start_train = datetime.datetime.now()
+            case ("end", "train"):
+                end_train = datetime.datetime.now()
+
+                self.__additional_events["train"]["start"] = self.__start_train.isoformat()
+                self.__additional_events["train"]["end"] = end_train.isoformat()
+                self.__additional_events["train"]["duration"] = (end_train - self.__start_train).total_seconds()
+            
+            case ("start", "CV10"):
+                self.__additional_events["CV10"] = {"start":"FAILED", "end":"FAILED", "duration": "FAILED"}
+                self.__start_cv10 = datetime.datetime.now()
+            case ("end", "CV10"):
+                end_cv10 = datetime.datetime.now()
+                
+                self.__additional_events["CV10"]["start"] = self.__start_cv10.isoformat()
+                self.__additional_events["CV10"]["end"] = end_cv10.isoformat()
+                self.__additional_events["CV10"]["duration"] = (end_cv10-self.__start_cv10).total_seconds()
+            
+            case ("return", None):
+                return self.__additional_events
+
+    def __call__(self) -> ReturnTaskTrainQuickModel:
         """
         Fit quickmodel and calculate statistics
         """
-        start = datetime.datetime.now()
         self.__init_paths(self.retrain)
+        self.__timing_additional_events("init")
 
+        self.__timing_additional_events("start", "train")
         X_train, X_test, Y_train, Y_test = self.__split_set()
 
         # Fit model --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -235,10 +270,13 @@ class TrainML(BaseTask):
             metrics_test = self.__compute_metrics(y_true=Y_test, y_pred=Y_pred_test)
         except Exception as e:
             raise Exception((f"Problem computing the metrics (TrainML.__call__)\nError: {e}"))
+        self.__timing_additional_events("end", "train")
 
         if self.cv10:
             try:
+                self.__timing_additional_events("start", "CV10")
                 statistics_cv10 = self.__compute_cv10()
+                self.__timing_additional_events("end", "CV10")
             except Exception as e:
                 raise Exception(
                     (f"Problem computing the cross valisation (TrainML.__compute_cv10)\nError: {e}")
@@ -249,6 +287,5 @@ class TrainML(BaseTask):
         self.__create_saving_files(
             proba, X_train, Y_train, metrics_train, metrics_test, statistics_cv10
         )
-
-        end = datetime.datetime.now()
-        print(f"Training completed in {(end - start).total_seconds()} seconds")
+        
+        return ReturnTaskTrainQuickModel(additional_events=self.__timing_additional_events("return"))

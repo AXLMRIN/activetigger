@@ -1035,6 +1035,8 @@ class ReturnTaskPredictModel(BaseModel):
     path: str
     metrics: dict[str, MLStatisticsModel] | None = None
 
+class ReturnTaskTrainQuickModel(BaseModel):
+    additional_events: dict
 
 class ModelScoresModel(BaseModel):
     internalvalid_scores: dict | None = None
