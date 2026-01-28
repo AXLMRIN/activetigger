@@ -7,7 +7,7 @@ import shutil
 from collections import Counter
 from logging import Logger
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Any
 
 import datasets  # type: ignore[import]  # type: ignore[import]
 import numpy as np
@@ -16,7 +16,6 @@ import torch
 from pandas import DataFrame
 from torch import nn
 from transformers import (  # type: ignore[import]  # type: ignore[import]
-    AutoConfig,
     AutoModelForSequenceClassification,
     AutoTokenizer,
     Trainer,
@@ -24,7 +23,6 @@ from transformers import (  # type: ignore[import]  # type: ignore[import]
     TrainerControl,
     TrainerState,
     TrainingArguments,
-    PredictionOutput
 )
 
 from activetigger.config import config
@@ -253,8 +251,9 @@ class TrainBert(BaseTask):
         """Cap the tokenizer max length and create a tokenizing function"""
         # if auto_max_length set max_length to the maximum length of tokenized sentences
         # Tokenize the text column
+        get_n_tokens = lambda txt: length_after_tokenizing(txt,tokenizer)
         if auto_max_length:
-            max_length = int(texts.apply(length_after_tokenizing).dropna().max())
+            max_length = int(texts.apply(get_n_tokens).dropna().max())
 
         # cap max_length
         max_length = min(original_max_length, base_model_max_length)
@@ -262,7 +261,7 @@ class TrainBert(BaseTask):
         percentage_truncated = int(
             100 * 
             texts
-            .apply(length_after_tokenizing)
+            .apply(get_n_tokens)
             .dropna()
             .apply(lambda x: x > max_length)
             .mean()
@@ -360,6 +359,7 @@ class TrainBert(BaseTask):
     
     def __create_save_files(self, 
             current_path: Path,
+            log_path : Path,
             df_train_results : pd.DataFrame,
             df_test_results : pd.DataFrame,
             training_data : pd.DataFrame,
@@ -376,6 +376,8 @@ class TrainBert(BaseTask):
         - the trained model 
         - the parameters used during the training (json)
         - metrics (json)
+
+        Also delete intermediate files
         """
 
         # Save results for the train and test set 
@@ -390,7 +392,6 @@ class TrainBert(BaseTask):
 
         # save the trained bert model
         bert_model.save_pretrained(current_path)
-        self.logger.info(f"Model trained {current_path}")
 
         # Save parameters
         with open(current_path.joinpath("parameters.json"), "w") as f:
@@ -423,7 +424,7 @@ class TrainBert(BaseTask):
         Main process to the task
         """
         current_path, log_path = self.__init_paths()
-        self.logger = self.__init_logger()
+        self.logger = self.__init_logger(log_path)
         device = self.__init_device()
 
         self.df = self.__check_data(self.df, self.col_label, self.col_text)
@@ -458,10 +459,11 @@ class TrainBert(BaseTask):
                 self.params, self.loss)
             
             trainer.train()  # type: ignore[attr-defined]
+            self.logger.info(f"Model trained {current_path}")
 
             # predict on the data (separation validation set and training set)
-            predictions_test : PredictionOutput = trainer.predict(self.df["test"]) 
-            predictions_train : PredictionOutput = trainer.predict(self.df["train"])
+            predictions_test  = trainer.predict(self.ds["test"]) # type: ignore[attr-defined]
+            predictions_train = trainer.predict(self.ds["train"])# type: ignore[attr-defined]
 
             # Compute the metrics
             df_train_results = self.ds["train"].to_pandas().set_index("id")
@@ -487,19 +489,23 @@ class TrainBert(BaseTask):
                 labels=labels,
             )
             
+            params_to_save = self.params.model_dump()
+            params_to_save.update({
+                "test_size" : self.test_size,
+                "base_model" : self.base_model,
+                "n_train" : len(self.ds["train"]),
+                "max_length" : self.max_length,
+                "device" : str(device),
+                "Proportion of elements truncated (%)" : percentage_truncated,
+            })
             self.__create_save_files(
                 current_path = current_path,
+                log_path = log_path,
                 df_train_results = df_train_results, 
                 df_test_results = df_test_results,
                 training_data = self.df[[self.col_text, self.col_label]],
                 bert_model = bert_model, 
-                params_to_save = self.params.model_dump().update({
-                    "test_size" : self.test_size,
-                    "base_model" : self.base_model,
-                    "n_train" : len(self.df["train"]),
-                    "max_length" : self.max_length,
-                    "Proportion of elements truncated (%)" : percentage_truncated,
-                }),
+                params_to_save = params_to_save,
                 metrics_train = metrics_train,
                 metrics_test = metrics_test
             )
@@ -513,8 +519,9 @@ class TrainBert(BaseTask):
             try:
                 del (
                     trainer,
-                    bert,
+                    bert_model,
                     self.df,
+                    self.ds,
                     device,
                     self.event,
                 )
