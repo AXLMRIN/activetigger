@@ -77,21 +77,21 @@ export const ProjectExportPage: FC = () => {
         <div className="row">
           <div className="col-12">
             <div className="explanations">Predict and export annotations and models</div>
-            <div className="d-flex align-items-center mt-2">
-              Select a file format
-              <select
-                className="form-select w-25 mx-2"
-                onChange={(e) => {
-                  setFormat(e.currentTarget.value);
-                }}
-              >
-                <option key="csv">csv</option>
-                <option key="xlsx">xlsx</option>
-                <option key="parquet">parquet</option>
-              </select>
-            </div>
             <Tabs id="panel" className="mt-3" defaultActiveKey="annotations">
               <Tab eventKey="annotations" title="Annotations">
+                <div className="d-flex align-items-center mt-2">
+                  Select a file format
+                  <select
+                    className="form-select w-25 mx-2"
+                    onChange={(e) => {
+                      setFormat(e.currentTarget.value);
+                    }}
+                  >
+                    <option key="csv">csv</option>
+                    <option key="xlsx">xlsx</option>
+                    <option key="parquet">parquet</option>
+                  </select>
+                </div>
                 <div>
                   <button
                     className="btn-secondary-action"
