@@ -83,6 +83,7 @@ export const ProjectExportPage: FC = () => {
                   Select a file format
                   <select
                     className="form-select w-25 mx-2"
+                    value={format}
                     onChange={(e) => {
                       setFormat(e.currentTarget.value);
                     }}
@@ -132,8 +133,48 @@ export const ProjectExportPage: FC = () => {
                     All annotations/schemes
                   </button>
                 </div>
+                {/*
+                small fix for the direct link when no nging
+                */}
+                {staticUrls ? (
+                  <>
+                    <a
+                      href={
+                        config.api.url.replace(/\/$/, '') + '/static/' + staticUrls.dataset.path
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3"
+                    >
+                      Static link to the raw dataset (click right, save as...)
+                    </a>
+                  </>
+                ) : (
+                  <button
+                    className="btn btn-primary mt-3"
+                    onClick={() => {
+                      getRawDataFile();
+                    }}
+                  >
+                    Export raw dataset in parquet
+                  </button>
+                )}
               </Tab>
               <Tab eventKey="features" title="Features">
+                <div className="d-flex align-items-center mt-2">
+                  Select a file format
+                  <select
+                    className="form-select w-25 mx-2"
+                    value={format}
+                    onChange={(e) => {
+                      setFormat(e.currentTarget.value);
+                    }}
+                  >
+                    <option key="csv">csv</option>
+                    <option key="xlsx">xlsx</option>
+                    <option key="parquet">parquet</option>
+                  </select>
+                </div>
                 <div>
                   <select
                     className="form-select"
@@ -188,6 +229,20 @@ export const ProjectExportPage: FC = () => {
                       {(availableModels || []).map((e) => (
                         <option key={e}>{e}</option>
                       ))}
+                    </select>
+                  </div>
+                  <div className="d-flex align-items-center mt-2">
+                    Select a file format
+                    <select
+                      className="form-select w-25 mx-2"
+                      value={format}
+                      onChange={(e) => {
+                        setFormat(e.currentTarget.value);
+                      }}
+                    >
+                      <option key="csv">csv</option>
+                      <option key="xlsx">xlsx</option>
+                      <option key="parquet">parquet</option>
                     </select>
                   </div>
                   <div>
@@ -267,31 +322,6 @@ export const ProjectExportPage: FC = () => {
             </Tabs>
           </div>
           <hr className="mt-3" />
-
-          {/*
-            small fix for the direct link when no nging
-            */}
-          {staticUrls ? (
-            <>
-              <a
-                href={config.api.url.replace(/\/$/, '') + '/static/' + staticUrls.dataset.path}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3"
-              >
-                Static link to the raw dataset (click right, save as...)
-              </a>
-            </>
-          ) : (
-            <button
-              className="btn btn-primary mt-3"
-              onClick={() => {
-                getRawDataFile();
-              }}
-            >
-              Export raw dataset in parquet
-            </button>
-          )}
         </div>
       </div>
     </ProjectPageLayout>
