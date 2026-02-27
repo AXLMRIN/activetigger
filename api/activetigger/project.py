@@ -155,6 +155,11 @@ class Project:
         self._memory_cache_time: float = 0.0
         self._memory_cache_interval: float = 60
 
+        # cached project state (avoids recomputing for every polling user)
+        self._state_cache: ProjectStateModel | None = None
+        self._state_cache_time: float = 0.0
+        self._state_cache_interval: float = 2  # seconds
+
         # load the project if exist
         if self.exists():
             self.status = "created"
@@ -738,11 +743,18 @@ class Project:
         if next.filter:
             # add context in the dataframe (it is ugly but ...)
             if next.dataset == "train":
-                df = df.join(self.data.train[self.params.cols_context])
+                existing_cols_contexts = self.params.cols_context
+                df = df.join(self.data.train[existing_cols_contexts])
             elif next.dataset == "valid" and self.data.valid is not None:
-                df = df.join(self.data.valid[self.params.cols_context])
+                existing_cols_contexts = [
+                    i for i in self.params.cols_context if i in self.data.valid.columns
+                ]
+                df = df.join(self.data.valid[existing_cols_contexts])
             elif next.dataset == "test" and self.data.test is not None:
-                df = df.join(self.data.test[self.params.cols_context])
+                existing_cols_contexts = [
+                    i for i in self.params.cols_context if i in self.data.test.columns
+                ]
+                df = df.join(self.data.test[existing_cols_contexts])
             else:
                 raise ValueError("Dataset should be test, valid or train")
 
@@ -751,7 +763,7 @@ class Project:
             filter_san = clean_regex(next.filter)
             if "CONTEXT=" in filter_san:  # case to search in the context
                 f_regex = (
-                    df[self.params.cols_context + ["ID"]]
+                    df[existing_cols_contexts + ["ID"]]
                     .apply(lambda row: " ".join(row.values.astype(str)), axis=1)
                     .str.contains(
                         filter_san.replace("CONTEXT=", ""),
@@ -762,7 +774,7 @@ class Project:
                 )
             elif "QUERY=" in filter_san:  # case to use a query
                 f_regex = cast(
-                    pd.Series, df[self.params.cols_context].eval(filter_san.replace("QUERY=", ""))
+                    pd.Series, df[existing_cols_contexts].eval(filter_san.replace("QUERY=", ""))
                 )
             else:
                 f_regex = df["text"].str.contains(filter_san, regex=True, case=True, na=False)
@@ -1107,8 +1119,17 @@ class Project:
         """
         State of the project
         Collecting states for submodules
+        Cached with a short TTL so multiple users polling don't each trigger
+        the full computation (DB queries, file reads, pandas work).
         """
-        return ProjectStateModel(
+        now = time.time()
+        if (
+            self._state_cache is not None
+            and (now - self._state_cache_time) < self._state_cache_interval
+        ):
+            return self._state_cache
+
+        result = ProjectStateModel(
             params=self.params,
             next=NextProjectStateModel(
                 methods_min=["fixed", "random"],
@@ -1129,6 +1150,9 @@ class Project:
             ),
             users=self.users.state(self.params.project_slug),
         )
+        self._state_cache = result
+        self._state_cache_time = now
+        return result
 
     def export_features(self, features: list, format: str = "parquet") -> FileResponse:
         """

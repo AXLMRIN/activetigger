@@ -120,11 +120,16 @@ export const ModelManagement: FC = () => {
   };
 
   // get information on the quickmodel
-  const { currentModel: currentQuickModelInformations } = useGetQuickModel(
+  const { currentModel: currentQuickModelInformations, reFetchQuickModel } = useGetQuickModel(
     projectSlug || null,
     currentQuickModelName,
     currentQuickModelName,
   );
+  useEffect(() => {
+    if (currentQuickModelInformations) {
+      reFetchQuickModel();
+    }
+  }, [isComputing]);
 
   // delete quickmodel
   const { deleteQuickModel } = useDeleteQuickModel(projectSlug || null);
@@ -203,8 +208,6 @@ export const ModelManagement: FC = () => {
     notify,
     currentProject,
   ]);
-
-  console.log(isComputing);
 
   return (
     <>
