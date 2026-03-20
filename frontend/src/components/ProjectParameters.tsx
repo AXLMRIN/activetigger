@@ -51,6 +51,7 @@ export const ProjectParameters: FC<ProjectParametersModel> = ({ project, project
             'Rows in valid set': project.params.valid ? project.params.n_valid : 'Empty',
             'Stratify train set': project.params.stratify_train ? 'Yes' : 'No',
             'Stratify test set': project.params.stratify_test ? 'Yes' : 'No',
+            'Random Sample': project.params.random_selection ? 'Yes' : 'No',
             'Stratification columns':
               project.params.cols_stratify.length > 0
                 ? project.params.cols_stratify.join(', ')
