@@ -1,6 +1,6 @@
 import { useRegisterEvents, useSigma } from '@react-sigma/core';
 import { pick } from 'lodash';
-import { Dispatch, FC, SetStateAction, useCallback, useEffect, useState } from 'react';
+import { Dispatch, FC, SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
 import { Coordinates } from 'sigma/types';
 
 import classNames from 'classnames';
@@ -29,16 +29,19 @@ export const MarqueeController: FC<{
         type: 'marquee';
         startCorner: Coordinates;
         mouseCorner: Coordinates;
-        //capturedNodes: string[];
       }
   >({ type: 'off' });
+
+  // Use a ref so event handlers always see the latest selectionState
+  // without needing to re-register events on every state change
+  const selectionStateRef = useRef(selectionState);
+  selectionStateRef.current = selectionState;
 
   // cleaning state when marquee closes
   const backToIdle = useCallback(() => {
     console.log('closing marquee');
     sigma.getCamera().enable();
     setSelectionState({ type: 'idle' });
-    //TODO: setEmphasizedNodes(null);
   }, [sigma]);
 
   const closeMarkee = useCallback(() => {
@@ -53,8 +56,9 @@ export const MarqueeController: FC<{
   // Keyboard events
   useEffect(() => {
     const keyDownHandler = (e: KeyboardEvent) => {
-      if (selectionState.type === 'idle') return;
-      if (selectionState.type === 'marquee' && e.key === 'Escape') {
+      const state = selectionStateRef.current;
+      if (state.type === 'idle') return;
+      if (state.type === 'marquee' && e.key === 'Escape') {
         setBbox(undefined);
         validateBoundingBox(undefined);
         backToIdle();
@@ -65,17 +69,17 @@ export const MarqueeController: FC<{
     return () => {
       window.document.body.removeEventListener('keydown', keyDownHandler);
     };
-  }, [backToIdle, selectionState, validateBoundingBox, setBbox]);
+  }, [backToIdle, validateBoundingBox, setBbox]);
 
   useEffect(() => {
     registerEvents({
       mousemovebody: (e) => {
+        const state = selectionStateRef.current;
         // update bbox if ongoing marquee drawing
-        if (selectionState.type === 'marquee') {
+        if (state.type === 'marquee') {
           const mousePosition = pick(e, 'x', 'y') as Coordinates;
 
-          //const graph = sigma.getGraph();
-          const start = sigma.viewportToGraph(selectionState.startCorner);
+          const start = sigma.viewportToGraph(state.startCorner);
           const end = sigma.viewportToGraph(mousePosition);
 
           const minX = Math.min(start.x, end.x);
@@ -86,33 +90,19 @@ export const MarqueeController: FC<{
           // update bbox state to update marquee display
           setBbox({ x: { min: minX, max: maxX }, y: { min: minY, max: maxY } });
 
-          // TODO emphasized nodes ? If we want to highlight nodes in the bbox
-          // const capturedNodes = graph.filterNodes((node, { x, y }) => {
-          //   const size = sigma.getNodeDisplayData(node)!.size as number;
-          //   return !(x + size < minX || x - size > maxX || y + size < minY || y - size > maxY);
-          // });
-          // setEmphasizedNodes(
-          //   new Set(
-          //     capturedNodes.concat(
-          //       selectionState.ctrlKeyDown && selection.type === 'nodes'
-          //         ? Array.from(selection.items)
-          //         : [],
-          //     ),
-          //   ),
-          // );
-
           setSelectionState({
-            ...selectionState,
+            ...state,
             mouseCorner: mousePosition,
           });
         }
       },
       clickStage: (e) => {
+        const state = selectionStateRef.current;
         // start / stop Marquee drawing
-        if (selectionState.type !== 'off') {
+        if (state.type !== 'off') {
           e.preventSigmaDefault();
 
-          if (selectionState.type === 'idle') {
+          if (state.type === 'idle') {
             console.log('start marquee');
             const mousePosition: Coordinates = pick(e.event, 'x', 'y');
 
@@ -120,7 +110,6 @@ export const MarqueeController: FC<{
               type: 'marquee',
               startCorner: mousePosition,
               mouseCorner: mousePosition,
-              //capturedNodes: [],
             });
             sigma.getCamera().disable();
           } else {
@@ -129,14 +118,15 @@ export const MarqueeController: FC<{
         }
       },
       click: (e) => {
-        // to make sur a click elsewhere than stage closes the marquee
-        if (selectionState.type === 'marquee') {
+        const state = selectionStateRef.current;
+        // to make sure a click elsewhere than stage closes the marquee
+        if (state.type === 'marquee') {
           e.preventSigmaDefault();
           closeMarkee();
         }
       },
     });
-  }, [registerEvents, sigma, selectionState, backToIdle, setBbox, closeMarkee]);
+  }, [registerEvents, sigma, setBbox, closeMarkee]);
 
   return (
     <>

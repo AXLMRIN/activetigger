@@ -38,6 +38,7 @@ interface NodeAttributesType {
   // the label as in the annotation
   label: string;
   true_label: string;
+  prediction?: string;
   size?: number;
 }
 
@@ -99,7 +100,9 @@ export const ProjectionVizSigma: FC<Props> = ({
     [data],
   );
 
-  labelColorMapping['NA'] = COLORS.NA;
+  const colorMapping = useMemo(() => {
+    return { ...labelColorMapping, NA: COLORS.NA } as { [key: string]: string };
+  }, [labelColorMapping]);
 
   // Special cursor to help interactivity affordances
   const [sigmaCursor, setSigmaCursor] = useState<SigmaCursorTypes>(undefined);
@@ -122,6 +125,7 @@ export const ProjectionVizSigma: FC<Props> = ({
           y: node.y,
           label: node.node_id,
           true_label: node.label,
+          prediction: node.predictions?.[0] as string | undefined,
           size,
         });
       });
@@ -135,15 +139,19 @@ export const ProjectionVizSigma: FC<Props> = ({
     (_node: string, node: NodeAttributesType): Partial<NodeDisplayData> => {
       const res: Partial<NodeDisplayData> = { ...node };
 
+      // pick the label to color by based on selected column
+      const colorLabel =
+        selectedColumn === 'predictions' && node.prediction ? node.prediction : node.true_label;
+
       // apply color for nodes
       if (clusterHighlight) {
-        if (clusterHighlight === node.true_label.toString()) {
-          res.color = labelColorMapping[node.true_label];
+        if (clusterHighlight === colorLabel.toString()) {
+          res.color = colorMapping[colorLabel] || colorMapping['NA'];
         } else {
-          res.color = labelColorMapping['NA'];
+          res.color = colorMapping['NA'];
         }
       } else {
-        res.color = labelColorMapping[node.true_label];
+        res.color = colorMapping[colorLabel] || colorMapping['NA'];
       }
 
       // only the label is displayed, so we set up the label as the node id
@@ -156,7 +164,7 @@ export const ProjectionVizSigma: FC<Props> = ({
       }
       return res;
     },
-    [selectedId, labelColorMapping, clusterHighlight],
+    [selectedId, colorMapping, clusterHighlight, selectedColumn],
   );
   const settings: Partial<Settings<NodeAttributesType>> = useMemo(
     () => ({
@@ -203,9 +211,9 @@ export const ProjectionVizSigma: FC<Props> = ({
             setSigmaCursor={setSigmaCursor}
             setClusterHighlightAfterDoubleClick={setClusterHighlightAfterDoubleClick}
           />
-          {Object.keys(labelColorMapping).length < 15 && (
+          {Object.keys(colorMapping).length < 15 && (
             <ControlsContainer position="top-left">
-              <Caption labelColorMapping={labelColorMapping} />
+              <Caption labelColorMapping={colorMapping} />
             </ControlsContainer>
           )}
           <ControlsContainer position={'top-right'}>

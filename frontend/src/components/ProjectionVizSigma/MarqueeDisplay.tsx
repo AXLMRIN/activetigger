@@ -1,5 +1,5 @@
 import { useRegisterEvents, useSigma } from '@react-sigma/core';
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { MarqueBoundingBox } from './MarqueeController';
 
 export const MarqueeDisplay: FC<{ bbox?: MarqueBoundingBox }> = ({ bbox }) => {
@@ -13,6 +13,11 @@ export const MarqueeDisplay: FC<{ bbox?: MarqueBoundingBox }> = ({ bbox }) => {
     { x: number; y: number; width: number; height: number } | undefined
   >(undefined);
 
+  // ref to avoid creating new objects when position hasn't changed
+  const lastPositionRef = useRef<
+    { x: number; y: number; width: number; height: number } | undefined
+  >(undefined);
+
   // callback to update the SVG position according to bbox positions and sigma camera state
   const updateRectPosition = useCallback(
     (bbox?: MarqueBoundingBox) => {
@@ -23,20 +28,47 @@ export const MarqueeDisplay: FC<{ bbox?: MarqueBoundingBox }> = ({ bbox }) => {
         // SVG wants one point + width and height where bbox is two points, let's transpose
         const width = xMax - x;
         const height = y - yMax;
-        if (!isNaN(x) && !isNaN(y) && !isNaN(width) && !isNaN(height))
-          setRectPosition({ x, y: yMax, width, height });
-        else setRectPosition(undefined);
-      } else setRectPosition(undefined);
+        if (!isNaN(x) && !isNaN(y) && !isNaN(width) && !isNaN(height)) {
+          const prev = lastPositionRef.current;
+          // Only update state if position actually changed
+          if (
+            !prev ||
+            prev.x !== x ||
+            prev.y !== yMax ||
+            prev.width !== width ||
+            prev.height !== height
+          ) {
+            const newPos = { x, y: yMax, width, height };
+            lastPositionRef.current = newPos;
+            setRectPosition(newPos);
+          }
+        } else {
+          if (lastPositionRef.current !== undefined) {
+            lastPositionRef.current = undefined;
+            setRectPosition(undefined);
+          }
+        }
+      } else {
+        if (lastPositionRef.current !== undefined) {
+          lastPositionRef.current = undefined;
+          setRectPosition(undefined);
+        }
+      }
     },
     [sigma],
   );
 
+  // Use a ref for bbox so the afterRender callback always sees the latest value
+  // without needing to re-register the event
+  const bboxRef = useRef(bbox);
+  bboxRef.current = bbox;
+
   useEffect(() => {
     registerEvents({
       // after each sigma render we update our SVG positions to follow camera (pan & zoom)
-      afterRender: () => updateRectPosition(bbox),
+      afterRender: () => updateRectPosition(bboxRef.current),
     });
-  }, [registerEvents, updateRectPosition, bbox]);
+  }, [registerEvents, updateRectPosition]);
 
   useEffect(() => {
     // update SVG position if bbox changes i.e. at init or when the bbox is being drawn
