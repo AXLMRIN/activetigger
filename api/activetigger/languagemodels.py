@@ -357,7 +357,11 @@ class LanguageModels:
         os.rename(model_path, new_path)
 
     def export_prediction(
-        self, name: str, file_name: str = "predict.parquet", format: str = "parquet"
+        self,
+        name: str,
+        file_name: str = "predict.parquet",
+        format: str = "parquet",
+        col_id: str | None = None,
     ) -> FileResponse:
         """
         Export predict file if exists
@@ -370,9 +374,9 @@ class LanguageModels:
             )
         df = pd.read_parquet(path)
 
-        # add index column
-        # read the index column in the parquet file
-        # add it in the dataframe
+        # rename id_external to original column name for consistency with other exports
+        if col_id is not None and "id_external" in df.columns:
+            df.rename(columns={"id_external": col_id}, inplace=True)
 
         # change the format
         if format == "parquet":

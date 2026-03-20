@@ -88,7 +88,10 @@ def export_prediction(
     test_rights(ProjectAction.EXPORT_DATA, current_user.username, project.name)
     try:
         return project.languagemodels.export_prediction(
-            name=name, file_name=f"predict_{dataset}.parquet", format=format
+            name=name,
+            file_name=f"predict_{dataset}.parquet",
+            format=format,
+            col_id=project.params.col_id,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
