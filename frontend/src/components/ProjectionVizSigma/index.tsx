@@ -1,8 +1,8 @@
-import { ControlsContainer, SigmaContainer, ZoomControl } from '@react-sigma/core';
+import { ControlsContainer, SigmaContainer, useSigma, ZoomControl } from '@react-sigma/core';
 import '@react-sigma/core/lib/style.css';
 import classNames from 'classnames';
 import Graph from 'graphology';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { PiSelectionSlashBold } from 'react-icons/pi';
 import { Settings } from 'sigma/settings';
 import { NodeDisplayData } from 'sigma/types';
@@ -41,6 +41,21 @@ interface NodeAttributesType {
   prediction?: string;
   size?: number;
 }
+
+/**
+ * Updates Sigma's nodeReducer setting dynamically without recreating the WebGL context.
+ * Must be rendered inside <SigmaContainer>.
+ */
+const NodeReducerUpdater: FC<{
+  nodeReducer: Settings<NodeAttributesType>['nodeReducer'];
+}> = ({ nodeReducer }) => {
+  const sigma = useSigma<NodeAttributesType>();
+  useEffect(() => {
+    sigma.setSetting('nodeReducer', nodeReducer);
+    sigma.refresh();
+  }, [sigma, nodeReducer]);
+  return null;
+};
 
 // function to quantify point size
 const getPointSize = (n: number) => {
@@ -166,13 +181,14 @@ export const ProjectionVizSigma: FC<Props> = ({
     },
     [selectedId, colorMapping, clusterHighlight, selectedColumn],
   );
+
+  // Keep settings stable so SigmaContainer doesn't recreate the WebGL context.
+  // The nodeReducer is updated dynamically via NodeReducerUpdater below.
   const settings: Partial<Settings<NodeAttributesType>> = useMemo(
     () => ({
-      // Settings from sigma
       allowInvalidContainer: true,
-      nodeReducer,
     }),
-    [nodeReducer],
+    [],
   );
 
   return (
@@ -206,6 +222,7 @@ export const ProjectionVizSigma: FC<Props> = ({
           graph={graph}
           settings={settings}
         >
+          <NodeReducerUpdater nodeReducer={nodeReducer} />
           <GraphEvents
             setSelectedIdAfterClick={setSelectedId}
             setSigmaCursor={setSigmaCursor}
