@@ -755,6 +755,8 @@ class Project:
                 f = pred_reindexed["prediction"].isin(next.on_labels)
             else:
                 f = pred_reindexed["prediction"].notna()
+        elif next.sample == "commented":
+            f = df["comment"].fillna("").str.len() > 0
         else:
             f = pd.Series(True, index=df.index)
 
@@ -1166,7 +1168,7 @@ class Project:
             next=NextProjectStateModel(
                 methods_min=["fixed", "random"],
                 methods=["fixed", "random", "maxprob", "active", "minprob"],
-                sample=["untagged", "all", "tagged", "predicted", "not_by_me"],
+                sample=["untagged", "all", "tagged", "predicted", "not_by_me", "commented"],
             ),
             schemes=self.schemes.state(),
             features=self.features.state(),

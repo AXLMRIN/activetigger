@@ -5,7 +5,7 @@ import { omit, sortBy, uniq } from 'lodash';
 import { useAppContext } from '../../core/useAppContext';
 import { truncateInMiddle } from '../../core/utils';
 import { SelectionConfig } from '../../types';
-import { AnnotationIcon, NoAnnotationIcon, PredictedIcon, UserIcon } from '../Icons';
+import { AnnotationIcon, CommentIcon, NoAnnotationIcon, PredictedIcon, UserIcon } from '../Icons';
 
 export interface TagFilterOption {
   sample: string;
@@ -39,6 +39,7 @@ const OptionIcon: FC<{ option: TagFilterOption }> = ({ option }) => (
     {option.sample === 'tagged' && option.user === undefined && <AnnotationIcon className="me-1" />}
     {option.sample === 'tagged' && option.user !== undefined && <UserIcon className="me-1" />}
     {option.sample === 'predicted' && <PredictedIcon className="me-1" />}
+    {option.sample === 'commented' && <CommentIcon className="me-1" />}
   </>
 );
 
@@ -157,7 +158,9 @@ export const AnnotationTagFilterSelect: FC<AnnotationTagFilterSelectProps> = ({
               ? `by ${o.user}`
               : o.sample === 'not_by_me'
                 ? 'not tagged by me'
-                : o.sample || '',
+                : o.sample === 'commented'
+                  ? 'with comments'
+                  : o.sample || '',
           20,
         )
       }
