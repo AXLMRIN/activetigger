@@ -8,6 +8,7 @@ import { RiFileTransferLine } from 'react-icons/ri';
 import { SlSizeFullscreen } from 'react-icons/sl';
 import { useParams } from 'react-router-dom';
 import { DisplayTableTopics, Row } from '../components/DisplayTableTopics';
+import { DisplayTrainingProcesses } from '../components/DisplayTrainingProcesses';
 import { BertopicForm } from '../components/forms/BertopicForm';
 import { ModelsPillDisplay } from '../components/ModelsPillDisplay';
 import { BertopicVizSigma } from '../components/ProjectionVizSigma/BertopicVizSigma';
@@ -147,16 +148,11 @@ export const BertopicPage: FC = () => {
           </ModelsPillDisplay>
         </div>
         {currentTraining && currentTraining?.length > 0 && (
-          <div className="alert alert-info m-2">
-            Current computation
-            <ul>
-              {Object.values(currentTraining).map(([k, v]) => (
-                <li key={k}>
-                  User {k} : {(v as unknown as { progress: string })?.progress}
-                </li>
-              ))}
-            </ul>
-          </div>
+          <DisplayTrainingProcesses
+            projectSlug={projectName || null}
+            processes={Object.fromEntries(currentTraining)}
+            showLossChart={false}
+          />
         )}
         <Modal
           show={showComputeNewBertopic}

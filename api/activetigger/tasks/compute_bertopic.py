@@ -340,19 +340,22 @@ class ComputeBertopic(BaseTask):
 
         if self.parameters.embedding_model not in config.models_embeddings:
             raise ValueError(f"Model {self.parameters.embedding_model} not supported.")
-        self.update_progress(f"Computing embeddings with {self.parameters.embedding_model}")
+        self.update_progress(10)
+        path_sbert_progress = self.path_run.joinpath("progress_sbert")
         embeddings = ComputeSbert(
             texts=df[self.col_text],
             path_process=self.path_bertopic,
             model=self.parameters.embedding_model,
             batch_size=32,
             min_gpu=1,
-            path_progress=self.path_run.joinpath("progress"),
+            path_progress=path_sbert_progress,
         )
         # transmit the event to allow interruption
         embeddings.event = self.event
         # launch computation
         computed = embeddings()
+        # clean up SBERT progress file
+        path_sbert_progress.unlink(missing_ok=True)
         # save the embeddings to a file
         computed.to_parquet(path_embeddings)
 
@@ -653,7 +656,7 @@ class ComputeBertopic(BaseTask):
         try:
             task_timer.start("setup")
             path_embeddings, path_projection = self.__init_paths()
-            self.update_progress("Initializing")
+            self.update_progress(5)
 
             df = self.__load_data()
             df = self.__check_text_data(df)
@@ -663,6 +666,7 @@ class ComputeBertopic(BaseTask):
                 self.__compute_embeddings(df, path_embeddings)
                 task_timer.stop("generate-embeddings")
 
+            self.update_progress(60)
             df_embeddings = self.__load_embeddings(path_embeddings)
             df_embeddings_t = self.__check_embeddings(df_embeddings, df)
 
@@ -680,12 +684,13 @@ class ComputeBertopic(BaseTask):
                 )
 
             embeddings: np.ndarray = df_embeddings_t.values
+            self.update_progress(65)
             self.__create_projection(df_embeddings_t, path_projection)
 
             self.__stop_process_opportunity()
 
             # Initialize BERTopic
-            self.update_progress("Initializing BERTopic")
+            self.update_progress(70)
             umap_model, hdbscan_model = self.__load_UMAP_HDBSCAN()
             vectorizer_model = self.__load_vectorizer()
 
@@ -700,7 +705,7 @@ class ComputeBertopic(BaseTask):
             task_timer.stop("setup")
 
             task_timer.start("fit")
-            self.update_progress(f"Fitting the model on {embeddings.shape[0]} elements")
+            self.update_progress(75)
             print(f"Fitting the model on {embeddings.shape} / {len(df)} elements")
             # Fit the BERTopic model
             topics, _ = topic_model.fit_transform(
@@ -708,6 +713,7 @@ class ComputeBertopic(BaseTask):
                 embeddings=embeddings,
             )
             task_timer.stop("fit")
+            self.update_progress(90)
 
             # Add outlier reduction
             if self.parameters.outlier_reduction:
@@ -730,6 +736,7 @@ class ComputeBertopic(BaseTask):
 
             self.__stop_process_opportunity()
 
+            self.update_progress(95)
             task_timer.start("save_files")
             self.__create_saving_files(
                 df=df,
@@ -782,9 +789,9 @@ class ComputeBertopic(BaseTask):
                 torch.cuda.empty_cache()
                 torch.cuda.ipc_collect()
 
-    def update_progress(self, message: str) -> None:
+    def update_progress(self, value: float) -> None:
         """
-        Update the progress of the task
+        Update the progress of the task (0-100 percentage)
         """
         with open(self.path_run.joinpath("progress"), "w") as f:
-            f.write(message)
+            f.write(str(round(value, 1)))

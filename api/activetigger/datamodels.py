@@ -847,7 +847,7 @@ class BERTopicDescriptionModel(BaseModel):
 
 class BertopicProjectStateModel(BaseModel):
     available: dict[str, BERTopicDescriptionModel]
-    training: dict[str, dict[str, str | int | None]]
+    training: dict[str, dict[str, str | int | float | None]]
     models: list[str]
 
 

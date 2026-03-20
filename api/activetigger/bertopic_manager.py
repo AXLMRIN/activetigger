@@ -127,12 +127,16 @@ class Bertopic:
             path=str(model_path),
         )
 
-    def training(self) -> dict[str, dict[str, str | int | None]]:
+    def training(self) -> dict[str, dict[str, str | int | float | None]]:
         """
         Get available BERTopic models in the current process
         """
         return {
-            e.user: {"progress": e.get_progress() or "Computing"}
+            e.user: {
+                "name": e.name,
+                "status": "training",
+                "progress": e.get_progress() if e.get_progress else None,
+            }
             for e in self.computing
             if e.kind == "bertopic"
         }
@@ -180,15 +184,29 @@ class Bertopic:
         """
         return [e for e in self.computing if e.user == user]
 
-    def get_progress(self, name) -> Callable[[], Optional[str]]:
+    def get_progress(self, name) -> Callable[[], float | None]:
         """
-        Access the log progess
+        Access the log progress.
+        During embedding computation, reads from a separate SBERT progress file
+        and scales it to the 10-60% range of the overall BERTopic progress.
         """
-        path_progress = self.path.joinpath("runs").joinpath(name).joinpath("progress")
+        path_run = self.path.joinpath("runs").joinpath(name)
+        path_progress = path_run.joinpath("progress")
+        path_sbert_progress = path_run.joinpath("progress_sbert")
 
         def progress():
+            # If SBERT is computing embeddings, scale its 0-100 to 10-60
+            if path_sbert_progress.exists():
+                try:
+                    sbert_val = float(path_sbert_progress.read_text().strip())
+                    return 10 + (sbert_val / 100) * 50
+                except (ValueError, OSError):
+                    pass
             if path_progress.exists():
-                return path_progress.read_text()
+                try:
+                    return float(path_progress.read_text().strip())
+                except (ValueError, OSError):
+                    pass
             return None
 
         return progress

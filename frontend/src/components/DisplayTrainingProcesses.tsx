@@ -23,6 +23,7 @@ export interface DisplayTrainingProcessesProps {
     | undefined;
   processStatus?: string;
   displayStopButton?: boolean;
+  showLossChart?: boolean;
 }
 
 interface LossData {
@@ -36,6 +37,7 @@ export const DisplayTrainingProcesses: FC<DisplayTrainingProcessesProps> = ({
   processes,
   processStatus,
   displayStopButton = false,
+  showLossChart = true,
 }) => {
   // track the highest progress seen per process to avoid regression to 0%
   const maxProgressRef = useRef<Record<string, number>>({});
@@ -115,7 +117,7 @@ export const DisplayTrainingProcesses: FC<DisplayTrainingProcessesProps> = ({
               </div>
 
               {/* Training details */}
-              {v.status === 'training' && (
+              {showLossChart && v.status === 'training' && (
                 <div className="mt-3">
                   <LossChart
                     loss={v.loss as unknown as LossData}
