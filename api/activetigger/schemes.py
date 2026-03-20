@@ -81,7 +81,11 @@ class SchemeCache:
             ts, df = self.content[scheme]
             df.loc[id, "labels"] = label
             df.loc[id, "user"] = user
-            df.loc[id, "timestamp"] = datetime.datetime.now(timezone.utc)
+            now = pd.Timestamp.now("UTC")
+            # ensure tz matches the column dtype (may be tz-naive or tz-aware)
+            if df["timestamp"].dt.tz is None:
+                now = now.tz_localize(None)
+            df.loc[id, "timestamp"] = now
 
 
 class Schemes:
