@@ -195,7 +195,7 @@ export const AnnotationModeForm: FC<AnnotationModeFormProps> = ({
                 o.value ===
                 optionValue({
                   mode: selectionConfig.mode,
-                  label_maxProb: selectionConfig.label_prob,
+                  label_prob: selectionConfig.label_prob,
                 }),
             )}
             getOptionLabel={(o) =>
@@ -210,7 +210,7 @@ export const AnnotationModeForm: FC<AnnotationModeFormProps> = ({
                 setAppContext((prev) => ({
                   ...prev,
                   selectionConfig: {
-                    ...selectionConfig,
+                    ...prev.selectionConfig,
                     mode: option.mode,
                     label_prob: option.label_prob,
                   },
