@@ -83,7 +83,12 @@ class SchemeCache:
             df.loc[id, "user"] = user
             now = pd.Timestamp.now("UTC")
             # ensure tz matches the column dtype (may be tz-naive or tz-aware)
-            if df["timestamp"].dt.tz is None:
+            if pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
+                if df["timestamp"].dt.tz is None:
+                    now = now.tz_localize(None)
+            else:
+                # column is object-typed (e.g. all NaN); convert to datetime first
+                df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
                 now = now.tz_localize(None)
             df.loc[id, "timestamp"] = now
 
@@ -147,6 +152,8 @@ class Schemes:
                 results,
                 columns=["id", "dataset_annotation", "labels", "user", "timestamp", "comment"],
             ).set_index("id")
+            # ensure timestamp is datetime
+            results_df["timestamp"] = pd.to_datetime(results_df["timestamp"], errors="coerce")
             # join the general index with the scheme data
             df = self.data.index.join(results_df, how="left")
             self.cache.put(scheme, df)
