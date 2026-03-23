@@ -1419,11 +1419,7 @@ class Project:
         # balance the dataset based on the min class
         if bert.class_balance:
             min_freq = df["labels"].value_counts().sort_values().min()
-            df = (
-                df.groupby("labels")
-                .apply(lambda x: x.sample(min_freq))
-                .reset_index(level=0, drop=True)
-            )
+            df = df.groupby("labels").sample(n=min_freq).reset_index(drop=True)
 
         # launch training process
         process_id = self.languagemodels.start_training_process(
