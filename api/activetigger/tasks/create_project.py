@@ -69,8 +69,6 @@ class CreateProject(BaseTask):
             # if the file was copied from a toy dataset / existing project
             file_path = self.params.dir.joinpath(self.data_all)
 
-        # content = pd.read_parquet(self.params.dir.joinpath(self.data_all))
-
         if not file_path.exists():
             raise Exception("File not found, problem when uploading")
 
@@ -78,9 +76,7 @@ class CreateProject(BaseTask):
             try:
                 content = pd.read_csv(file_path, low_memory=False, on_bad_lines="skip")
             except Exception:
-                content = pd.read_csv(
-                    file_path, on_bad_lines="skip", engine="python"
-                )
+                content = pd.read_csv(file_path, on_bad_lines="skip", engine="python")
         elif str(file_path).endswith(".parquet"):
             content = pd.read_parquet(file_path)
         elif str(file_path).endswith(".xlsx"):
@@ -181,10 +177,9 @@ class CreateProject(BaseTask):
         # case there is a test or valid set, common draw
         if self.params.n_test + self.params.n_valid != 0:
             n_to_draw = self.params.n_test + self.params.n_valid
-            # if no stratification
+            # manage stratification
             if len(self.params.cols_stratify) == 0:
                 draw = content.sample(n_to_draw, random_state=self.random_seed)
-            # if stratification, total cat, number of element per cat, sample with a lim
             else:
                 df_grouped = content.groupby(self.params.cols_stratify, group_keys=False)
                 nb_cat = len(df_grouped)

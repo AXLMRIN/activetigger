@@ -84,6 +84,20 @@ export const ProjectCreationForm: FC = () => {
   const copyExistingData = useCopyExistingData();
   const files = useWatch({ control, name: 'files' }); // watch the files entry
   const force_label = useWatch({ control, name: 'force_label' }); // watch the force label entry
+  const random_selection = useWatch({ control, name: 'random_selection' }); // watch the random selection entry
+  const stratify_train = useWatch({ control, name: 'stratify_train' });
+  const stratify_test = useWatch({ control, name: 'stratify_test' });
+
+  // When random_selection is unchecked, reset dependent fields
+  useEffect(() => {
+    if (!random_selection) {
+      setValue('n_valid', 0);
+      setValue('n_test', 0);
+      setValue('force_label', false);
+      setValue('stratify_train', false);
+      setValue('stratify_test', false);
+    }
+  }, [random_selection, setValue]);
 
   // available columns to select, depending of the source
   const [availableFields, setAvailableFields] = useState<Option[] | undefined>(undefined);
@@ -550,7 +564,7 @@ export const ProjectCreationForm: FC = () => {
               <input
                 id="n_valid"
                 type="number"
-                disabled={creatingProject}
+                disabled={creatingProject || !random_selection}
                 {...register('n_valid')}
                 min={0}
               />
@@ -567,7 +581,7 @@ export const ProjectCreationForm: FC = () => {
               <input
                 id="n_test"
                 type="number"
-                disabled={creatingProject}
+                disabled={creatingProject || !random_selection}
                 {...register('n_test')}
                 min={0}
               />
@@ -587,15 +601,6 @@ export const ProjectCreationForm: FC = () => {
                 </div>
                 <div>
                   <input
-                    id="force_label"
-                    type="checkbox"
-                    disabled={creatingProject}
-                    {...register('force_label')}
-                  />
-                  <label htmlFor="force_label">Prioritize rows with a label </label>
-                </div>
-                <div>
-                  <input
                     id="random_selection"
                     type="checkbox"
                     disabled={creatingProject || force_label}
@@ -609,15 +614,34 @@ export const ProjectCreationForm: FC = () => {
                     <Tooltip anchorSelect=".rselect" place="top">
                       If unticked, will preserve order of the original dataset (note: rows without
                       <br />
-                      text are dropped) NEED A FIX only if no evaluation datasets (eval/test)
+                      text are dropped) only if no evaluation datasets (eval/test)
                     </Tooltip>
                   </label>
                 </div>
                 <div>
                   <input
+                    id="force_label"
+                    type="checkbox"
+                    disabled={creatingProject || !random_selection}
+                    {...register('force_label')}
+                  />
+                  <label htmlFor="force_label">
+                    Prioritize rows with a label{' '}
+                    <a className="force_labelinfo">
+                      <HiOutlineQuestionMarkCircle />
+                    </a>
+                    <Tooltip anchorSelect=".force_labelinfo" place="top">
+                      If ticked, select rows with a label in priority for the trainset (no more
+                      random). Careful : valid/test set take priority and will still be random.
+                    </Tooltip>
+                  </label>
+                </div>
+
+                <div>
+                  <input
                     id="stratify_train"
                     type="checkbox"
-                    disabled={creatingProject || force_label}
+                    disabled={creatingProject || force_label || !random_selection}
                     {...register('stratify_train')}
                   />
                   <label htmlFor="stratify_train">
@@ -635,7 +659,7 @@ export const ProjectCreationForm: FC = () => {
                   <input
                     id="stratify_test"
                     type="checkbox"
-                    disabled={creatingProject || force_label}
+                    disabled={creatingProject || force_label || !random_selection}
                     {...register('stratify_test')}
                   />
                   <label htmlFor="stratify_test">
@@ -650,29 +674,33 @@ export const ProjectCreationForm: FC = () => {
                   </label>
                 </div>
 
-                <label htmlFor="cols_stratify">Column(s) used for stratification</label>
-                <Controller
-                  name="cols_stratify"
-                  control={control}
-                  render={({ field: { onChange } }) => (
-                    <Select
-                      id="cols_stratify"
-                      options={availableFields}
-                      isMulti
-                      isDisabled={creatingProject}
-                      onChange={(selectedOptions) => {
-                        onChange(
-                          selectedOptions ? selectedOptions.map((option) => option.value) : [],
-                        );
-                      }}
+                {(stratify_train || stratify_test) && (
+                  <>
+                    <label htmlFor="cols_stratify">Column(s) used for stratification</label>
+                    <Controller
+                      name="cols_stratify"
+                      control={control}
+                      render={({ field: { onChange } }) => (
+                        <Select
+                          id="cols_stratify"
+                          options={availableFields}
+                          isMulti
+                          isDisabled={creatingProject}
+                          onChange={(selectedOptions) => {
+                            onChange(
+                              selectedOptions ? selectedOptions.map((option) => option.value) : [],
+                            );
+                          }}
+                        />
+                      )}
                     />
-                  )}
-                />
+                  </>
+                )}
                 <div>
                   <input
                     id="clear_test"
                     type="checkbox"
-                    disabled={creatingProject}
+                    disabled={creatingProject || !random_selection}
                     {...register('clear_test')}
                   />
                   <label htmlFor="clear_test">Drop annotations for the testset </label>
