@@ -15,6 +15,7 @@ import torch
 from cryptography.fernet import Fernet
 from pandas import Series
 from sklearn.metrics import (  # type: ignore[import]
+    accuracy_score,
     confusion_matrix,
     f1_score,
     precision_score,
@@ -241,6 +242,9 @@ def get_metrics(
     precision_micro = precision_score(Y_true, Y_pred, average="micro", zero_division=1)
     precision_micro = round(precision_micro, decimals)
 
+    accuracy = accuracy_score(Y_true, Y_pred)
+    accuracy = round(accuracy, decimals)
+
     # Compute confiusion matrix --- --- --- --- --- --- --- --- --- --- --- --- -
     confusion = confusion_matrix(Y_true, Y_pred, labels=labels)
 
@@ -278,6 +282,7 @@ def get_metrics(
         f1_macro=f1_macro,
         f1_micro=f1_micro,
         precision=precision_micro,
+        accuracy=accuracy,
         false_predictions=false_prediction,
         table=cast(dict[str, Any], table.to_dict(orient="split")),
     )
