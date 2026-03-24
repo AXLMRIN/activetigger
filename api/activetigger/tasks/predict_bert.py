@@ -160,7 +160,7 @@ class PredictBert(BaseTask):
         if self.col_datasets:
             pred[self.col_datasets] = self.df[self.col_datasets]
         if self.col_id_external:
-            pred[self.col_id_external] = self.df[self.col_id_external]
+            pred[self.col_id_external] = self.df[self.col_id_external].astype(str)
         if self.col_label:
             pred["label"] = self.df[self.col_label]
         return pred
