@@ -245,7 +245,7 @@ class PredictBert(BaseTask):
                 with torch.no_grad():
                     outputs = model(**chunk)
                 res = outputs[0]
-                if device.type == "cuda":
+                if device.type != "cpu":
                     res = res.cpu()
                 res = res.softmax(1).detach().numpy()
                 predictions.append(res)
@@ -270,9 +270,11 @@ class PredictBert(BaseTask):
             raise e
         finally:
             # delete the temporary logs
-            os.remove(self.progress_path)
+            if self.progress_path.exists():
+                os.remove(self.progress_path)
             # clean memory
-            del tokenizer, model, chunk, self.df, res, predictions, outputs, self.event
+            self.df = None
+            self.event = None
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
