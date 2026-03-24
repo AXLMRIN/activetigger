@@ -729,7 +729,7 @@ class Project:
         predict = PredictedLabel(label=None, proba=None, entropy=None)
         if next.model_active is not None:
             prediction = self.get_model_prediction(next.model_active.type, next.model_active.value)
-            proba = prediction
+            proba = prediction.reindex(df.index)
 
         # filter based on the labels
         if next.sample == "untagged":
@@ -750,11 +750,10 @@ class Project:
         elif next.sample == "predicted":
             if next.model_active is None:
                 raise ValueError("An active model is required for predicted sample")
-            pred_reindexed = prediction.reindex(df.index)
             if next.on_labels is not None and len(next.on_labels) > 0:
-                f = pred_reindexed["prediction"].isin(next.on_labels)
+                f = proba["prediction"].isin(next.on_labels)
             else:
-                f = pred_reindexed["prediction"].notna()
+                f = proba["prediction"].notna()
         elif next.sample == "commented":
             f = df["comment"].fillna("").str.len() > 0
         else:

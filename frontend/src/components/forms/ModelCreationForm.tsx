@@ -281,7 +281,7 @@ export const ModelCreationForm: FC<ModelCreationFormProps> = ({
             Eval size for the dev test to compute metrics.
           </Tooltip>
         </label>
-        <input type="number" step="0.1" {...registerNewModel('test_size')} />
+        <input type="number" step="0.1" min="0" max="0.9" {...registerNewModel('test_size')} />
 
         <label>
           Class threshold{' '}

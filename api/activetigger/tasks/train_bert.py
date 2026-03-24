@@ -277,6 +277,8 @@ class TrainBert(BaseTask):
         """Load the training arguments and update the configuration"""
 
         # Calculate the number of steps (total, warmup and eval)
+        has_test = "test" in ds
+
         total_steps = (float(params.epochs) * len(ds["train"])) // (
             int(params.batchsize) * float(params.gradacc)
         )
@@ -300,25 +302,26 @@ class TrainBert(BaseTask):
             per_device_train_batch_size=int(params.batchsize),
             per_device_eval_batch_size=int(params.batchsize),
             # Logging and saving parameters
-            eval_strategy="steps",
-            eval_steps=eval_steps,
-            save_strategy="best",  # steps
-            metric_for_best_model="eval_loss",
-            save_steps=int(eval_steps),
+            eval_strategy="steps" if has_test else "no",
+            eval_steps=eval_steps if has_test else None,
+            save_strategy="best" if has_test else "epoch",
+            metric_for_best_model="eval_loss" if has_test else None,
+            save_steps=int(eval_steps) if has_test else None,
             logging_steps=int(eval_steps),
-            do_eval=True,
-            greater_is_better=False,
-            load_best_model_at_end=params.best,
+            do_eval=has_test,
+            greater_is_better=False if has_test else None,
+            load_best_model_at_end=params.best if has_test else False,
             use_cpu=config.cpu_only or not bool(params.gpu),  # deactivate gpu
         )
 
         callback = CustomLoggingCallback(self.event, current_path=current_path, logger=self.logger)
+        eval_dataset = ds["test"] if has_test else None
         if loss == "cross_entropy":
             trainer = Trainer(
                 model=bert_model,
                 args=training_args,
                 train_dataset=ds["train"],
-                eval_dataset=ds["test"],
+                eval_dataset=eval_dataset,
                 callbacks=[callback],
             )
         elif loss == "weighted_cross_entropy":
@@ -327,7 +330,7 @@ class TrainBert(BaseTask):
                 model=bert_model,
                 args=training_args,
                 train_dataset=ds["train"],
-                eval_dataset=ds["test"],
+                eval_dataset=eval_dataset,
                 callbacks=[callback],
                 class_weights=compute_class_weights(ds["train"], label_key="labels"),
             )
@@ -341,12 +344,12 @@ class TrainBert(BaseTask):
         current_path: Path,
         log_path: Path,
         df_train_results: pd.DataFrame,
-        df_test_results: pd.DataFrame,
+        df_test_results: pd.DataFrame | None,
         training_data: pd.DataFrame,
         bert_model,
         params_to_save: dict[str, Any],
         metrics_train: MLStatisticsModel,
-        metrics_test: MLStatisticsModel,
+        metrics_test: MLStatisticsModel | None,
     ) -> None:
         """Save the model and parameters
         Save the following objects:
@@ -364,9 +367,10 @@ class TrainBert(BaseTask):
         df_train_results[["true_label", "predicted_label"]].to_csv(
             current_path.joinpath("train_dataset_eval.csv")
         )
-        df_test_results[["true_label", "predicted_label"]].to_csv(
-            current_path.joinpath("test_dataset_eval.csv")
-        )
+        if df_test_results is not None:
+            df_test_results[["true_label", "predicted_label"]].to_csv(
+                current_path.joinpath("test_dataset_eval.csv")
+            )
         training_data.to_parquet(current_path.joinpath("training_data.parquet"))
 
         # save the trained bert model
@@ -389,14 +393,13 @@ class TrainBert(BaseTask):
             str(self.path.joinpath(self.name)),
         )
 
+        metrics_data: dict[str, Any] = {
+            "train": metrics_train.model_dump(mode="json"),
+        }
+        if metrics_test is not None:
+            metrics_data["trainvalid"] = metrics_test.model_dump(mode="json")
         with open(str(current_path.joinpath("metrics_training.json")), "w") as f:
-            json.dump(
-                {
-                    "train": metrics_train.model_dump(mode="json"),
-                    "trainvalid": metrics_test.model_dump(mode="json"),
-                },
-                f,
-            )
+            json.dump(metrics_data, f)
 
     def __call__(self) -> EventsModel:
         """
@@ -425,7 +428,10 @@ class TrainBert(BaseTask):
         self.ds = self.ds.map(tokenizing_function, batched=True)
 
         # Build train/test dataset for dev eval
-        self.ds = self.ds.train_test_split(test_size=self.test_size)  # stratify_by_column="label"
+        if self.test_size > 0:
+            self.ds = self.ds.train_test_split(test_size=self.test_size)
+        else:
+            self.ds = datasets.DatasetDict({"train": self.ds})
         self.logger.info("Train/test dataset created")
 
         # Model
@@ -453,7 +459,6 @@ class TrainBert(BaseTask):
 
             # predict on the data (separation validation set and training set)
             task_timer.start("evaluate")
-            predictions_test = trainer.predict(self.ds["test"])  # type: ignore[attr-defined]
             predictions_train = trainer.predict(self.ds["train"])  # type: ignore[attr-defined]
 
             # Compute the metrics
@@ -468,17 +473,23 @@ class TrainBert(BaseTask):
                 texts=df_train_results["text"],
                 labels=labels,
             )
-            df_test_results = self.ds["test"].to_pandas().set_index("id")
-            df_test_results["true_label"] = [id2label[i] for i in predictions_test.label_ids]
-            df_test_results["predicted_label"] = [
-                id2label[i] for i in np.argmax(predictions_test.predictions, axis=1)
-            ]
-            metrics_test = get_metrics(
-                Y_true=df_test_results["true_label"],
-                Y_pred=df_test_results["predicted_label"],
-                texts=df_test_results["text"],
-                labels=labels,
-            )
+
+            if "test" in self.ds:
+                predictions_test = trainer.predict(self.ds["test"])  # type: ignore[attr-defined]
+                df_test_results = self.ds["test"].to_pandas().set_index("id")
+                df_test_results["true_label"] = [id2label[i] for i in predictions_test.label_ids]
+                df_test_results["predicted_label"] = [
+                    id2label[i] for i in np.argmax(predictions_test.predictions, axis=1)
+                ]
+                metrics_test = get_metrics(
+                    Y_true=df_test_results["true_label"],
+                    Y_pred=df_test_results["predicted_label"],
+                    texts=df_test_results["text"],
+                    labels=labels,
+                )
+            else:
+                df_test_results = None
+                metrics_test = None
             task_timer.stop("evaluate")
 
             task_timer.start("save_files")
