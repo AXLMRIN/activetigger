@@ -66,10 +66,11 @@ export const ProjectionManagement: FC<ProjectionManagementProps> = ({
     () => (projectionData ? [...new Set(projectionData.nodes.map((o) => o.label))] : []),
     [projectionData],
   );
-  const colormap = useMemo(
-    () => chroma.scale('Paired').colors(uniqueLabels.length),
-    [uniqueLabels.length],
-  );
+  const baseColors = chroma.brewer.Dark2;
+
+  const colormap = useMemo(() => {
+    return uniqueLabels.map((_, i) => baseColors[i % baseColors.length]);
+  }, [uniqueLabels, baseColors]);
 
   // form management
   const availableProjections = useMemo(() => project?.projections, [project?.projections]);

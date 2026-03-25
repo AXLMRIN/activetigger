@@ -2878,6 +2878,27 @@ export function useExportTopicsToScheme(projectSlug: string | null) {
   return exportTopicsToScheme;
 }
 
+/**
+ * Hook to export the topics as a feature for quick models
+ */
+export function useExportTopicsToFeature(projectSlug: string | null) {
+  const { notify } = useNotifications();
+  const exportTopicsToFeature = useCallback(
+    async (topicmodelname: string | null) => {
+      if (projectSlug && topicmodelname) {
+        const res = await api.POST('/bertopic/export-to-feature', {
+          params: {
+            query: { project_slug: projectSlug, topic_model_name: topicmodelname },
+          },
+        });
+        if (!res.error) notify({ type: 'success', message: 'Feature created from topic model.' });
+      }
+    },
+    [notify, projectSlug],
+  );
+  return exportTopicsToFeature;
+}
+
 export function useGetMonitoringMetrics() {
   const [fetchTrigger, setFetchTrigger] = useState<boolean>(false);
 

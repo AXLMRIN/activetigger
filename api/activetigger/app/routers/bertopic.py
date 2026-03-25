@@ -1,13 +1,14 @@
 from typing import Annotated
 
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from activetigger.app.dependencies import ProjectAction, get_project, test_rights, verified_user
 from activetigger.datamodels import (
+    BertopicProjectionData,
     BertopicTopicsOutModel,
     ComputeBertopicModel,
     UserInDBModel,
-    BertopicProjectionData
 )
 from activetigger.orchestrator import orchestrator
 from activetigger.project import Project
@@ -47,7 +48,7 @@ def compute_bertopic(
             name=bertopic.name,
             user=current_user.username,
             force_compute_embeddings=bertopic.force_compute_embeddings,
-            scheme = bertopic.scheme
+            scheme=bertopic.scheme,
         )
         orchestrator.log_action(
             current_user.username, f"COMPUTE BERTopic MODEL: {bertopic.name}", project.name
@@ -159,4 +160,64 @@ def export_bertopic_to_scheme(
 
     except Exception as e:
         orchestrator.log_action(current_user.username, f"DEBUG-EXPORT-TO-SCHEME: {e}", project.name)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/bertopic/export-to-feature", dependencies=[Depends(verified_user)])
+def export_bertopic_to_feature(
+    project: Annotated[Project, Depends(get_project)],
+    current_user: Annotated[UserInDBModel, Depends(verified_user)],
+    topic_model_name: str = Query(...),
+) -> None:
+    """
+    Export the topic model as a feature for quick models
+    """
+    try:
+        test_rights(ProjectAction.ADD, current_user.username, project.name)
+
+        # get topics and clusters
+        labels, clusters, topic_id_to_topic_name = project.bertopic.export_to_scheme(
+            topic_model_name
+        )
+
+        feature_name = f"bertopic_{topic_model_name}"
+
+        # if the feature already exists, delete it first
+        if project.features.exists(feature_name):
+            project.features.delete(feature_name)
+
+        # build a Series aligned to the full features index
+        features_index = pd.read_parquet(project.features.path_features, columns=[]).index
+
+        # map each id to its topic name, "unassigned" for outliers or missing
+        topic_series = pd.Series("unassigned", index=features_index, dtype=str)
+        for id_internal, cluster_id in clusters.items():
+            str_id = str(id_internal)
+            if str_id in topic_series.index and cluster_id != -1:
+                topic_series[str_id] = topic_id_to_topic_name[cluster_id]
+
+        # one-hot encode
+        dummies = pd.get_dummies(topic_series, drop_first=True).astype(int)
+
+        # sanitize column names (__ is the feature separator)
+        dummies.columns = [c.replace("__", "_") for c in dummies.columns]
+
+        project.features.add(
+            name=feature_name,
+            kind="bertopic",
+            username=current_user.username,
+            parameters={"topic_model": topic_model_name},
+            new_content=dummies,
+        )
+
+        orchestrator.log_action(
+            current_user.username,
+            f"Export BERTopic to feature : {feature_name}",
+            project.name,
+        )
+
+    except Exception as e:
+        orchestrator.log_action(
+            current_user.username, f"DEBUG-EXPORT-TO-FEATURE: {e}", project.name
+        )
         raise HTTPException(status_code=500, detail=str(e))

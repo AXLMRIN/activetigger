@@ -18,6 +18,7 @@ import {
   useDownloadBertopicEmbeddings,
   useDownloadBertopicReport,
   useDownloadBertopicTopics,
+  useExportTopicsToFeature,
   useExportTopicsToScheme,
   useGetBertopicProjection,
   useGetBertopicTopics,
@@ -33,6 +34,7 @@ export const BertopicPage: FC = () => {
   } = useAppContext();
   const deleteBertopic = useDeleteBertopic(projectName || null);
   const exportTopicsToScheme = useExportTopicsToScheme(projectName || null);
+  const exportTopicsToFeature = useExportTopicsToFeature(projectName || null);
   const { downloadBertopicTopics } = useDownloadBertopicTopics(projectName || null);
   const { downloadBertopicClusters } = useDownloadBertopicClusters(projectName || null);
   const { downloadBertopicReport } = useDownloadBertopicReport(projectName || null);
@@ -312,6 +314,15 @@ export const BertopicPage: FC = () => {
                 onClick={() => exportBertopicAsAnnotation(currentBertopic)}
               >
                 Convert to scheme <RiFileTransferLine size={20} />
+              </button>
+              <button
+                className="btn-secondary-action"
+                style={{ whiteSpace: 'nowrap' }}
+                onClick={() =>
+                  currentBertopic ? exportTopicsToFeature(currentBertopic) : null
+                }
+              >
+                Convert to feature <RiFileTransferLine size={20} />
               </button>
               <button
                 className="btn-secondary-action"

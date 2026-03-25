@@ -1663,6 +1663,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bertopic/export-to-feature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Export Bertopic To Feature
+         * @description Export the topic model as a feature for quick models
+         */
+        post: operations["export_bertopic_to_feature_bertopic_export_to_feature_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/messages": {
         parameters: {
             query?: never;
@@ -6302,6 +6322,38 @@ export interface operations {
         };
     };
     export_bertopic_to_scheme_bertopic_export_to_scheme_post: {
+        parameters: {
+            query: {
+                topic_model_name: string;
+                project_slug: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_bertopic_to_feature_bertopic_export_to_feature_post: {
         parameters: {
             query: {
                 topic_model_name: string;
