@@ -549,7 +549,7 @@ class Orchestrator:
         Create a demo project for a specific user
         """
         # TODO : put those elements in the config file
-        path_data = Path("../frontend/public/dataset_test.csv")
+        path_data = Path("../frontend/public/gwsd_train_test.csv")
         col_id = "id"
         col_text = "sentence"
         col_label = "label_agg"

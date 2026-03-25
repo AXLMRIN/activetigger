@@ -385,7 +385,7 @@ export const ProjectCreationForm: FC = () => {
                   File format : csv, xlsx or parquet &lt; {maxSizeMB} MB
                   <br />
                   Example dataset:{' '}
-                  <a href="./dataset_test.csv" download>
+                  <a href="./gwsd_train_test.csv" download>
                     "Detecting Stance in Media On Global Warming" (download)
                   </a>
                 </div>
