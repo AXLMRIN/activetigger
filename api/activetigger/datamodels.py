@@ -326,6 +326,7 @@ class LMParametersDbModel(LMParametersModel):
 
 class LMStatusModel(BaseModel):
     predicted: bool = False
+    predicted_all: bool = False
     tested: bool = False
     predicted_external: bool = False
     name: str

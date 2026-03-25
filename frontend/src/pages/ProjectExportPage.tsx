@@ -45,7 +45,7 @@ export const ProjectExportPage: FC = () => {
   const availablePredictionAll =
     (currentScheme &&
       model &&
-      project?.languagemodels?.available?.[currentScheme]?.[model]?.['predicted']) ??
+      project?.languagemodels?.available?.[currentScheme]?.[model]?.['predicted_all']) ??
     false;
   const availablePredictionTest =
     (currentScheme &&

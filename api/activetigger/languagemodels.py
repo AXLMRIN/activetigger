@@ -108,6 +108,7 @@ class LanguageModels:
                 r[m.scheme] = {}
             r[m.scheme][m.name] = LMStatusModel(
                 predicted=m.parameters.get("predicted", False),
+                predicted_all=m.parameters.get("predicted_all", False),
                 tested=m.parameters.get("tested", False),
                 predicted_external=m.parameters.get("predicted_external", False),
                 name=m.name,
@@ -444,12 +445,20 @@ class LanguageModels:
             )
             print("Testing finished")
         if element.status == "predicting":
-            # update flag if prediction was on the annotable or complete dataset
-            if element.dataset in ("annotable", "all"):
+            # update flag if prediction was on the annotable dataset
+            if element.dataset == "annotable":
                 self.language_models_service.set_model_params(
                     self.project_slug,
                     element.model_name,
                     flag="predicted",
+                    value=True,
+                )
+            # update flag if prediction was on the complete dataset
+            if element.dataset == "all":
+                self.language_models_service.set_model_params(
+                    self.project_slug,
+                    element.model_name,
+                    flag="predicted_all",
                     value=True,
                 )
             # update flag if there is a prediction in an external dataset

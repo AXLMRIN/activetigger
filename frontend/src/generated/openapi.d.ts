@@ -2578,6 +2578,11 @@ export interface components {
              */
             predicted: boolean;
             /**
+             * Predicted All
+             * @default false
+             */
+            predicted_all: boolean;
+            /**
              * Tested
              * @default false
              */
