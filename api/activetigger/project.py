@@ -1439,6 +1439,7 @@ class Project:
             max_length=bert.max_length,
             auto_max_length=bert.auto_max_length,
             class_balance=bert.class_balance,
+            class_min_freq=bert.class_min_freq,
         )
         self.monitoring.register_process(
             process_name=process_id,

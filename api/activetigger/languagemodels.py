@@ -195,6 +195,7 @@ class LanguageModels:
         max_length: int = 512,
         auto_max_length: bool = False,
         class_balance: bool = False,
+        class_min_freq: int = 1,
     ) -> str:
         """
         Manage the training of a model from the API
@@ -245,6 +246,7 @@ class LanguageModels:
                 max_length=max_length,
                 auto_max_length=auto_max_length,
                 class_balance=class_balance,
+                class_min_freq=class_min_freq,
             ),
             queue="gpu",
         )

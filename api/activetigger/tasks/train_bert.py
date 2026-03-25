@@ -143,6 +143,7 @@ class TrainBert(BaseTask):
         max_length: int = 512,
         auto_max_length: bool = False,
         class_balance: bool = False,
+        class_min_freq: int = 1,
         **kwargs,
     ):
         super().__init__()
@@ -162,6 +163,7 @@ class TrainBert(BaseTask):
         self.max_length = max_length
         self.auto_max_length = auto_max_length
         self.class_balance = class_balance
+        self.class_min_freq = class_min_freq
 
     def __init_paths(self) -> Tuple[Path, Path]:
         """Initiate the current path (directory for the model) and for the logger"""
@@ -505,6 +507,7 @@ class TrainBert(BaseTask):
                     "loss": self.loss,
                     "auto context length": self.params.adapt,
                     "balance classes": self.class_balance,
+                    "class_min_freq": self.class_min_freq,
                 }
             )
             self.__create_save_files(
