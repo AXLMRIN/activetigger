@@ -25,6 +25,7 @@ import { DisplayScores } from './DisplayScores';
 import { DisplayTrainingProcesses } from './DisplayTrainingProcesses';
 import { ModelParametersTab } from './ModelParametersTab';
 import { ModelsPillDisplay } from './ModelsPillDisplay';
+import { ValidateButtons } from './ValidateButton';
 import { ModelCreationForm } from './forms/ModelCreationForm';
 import { QuickModelForm } from './forms/QuickModelForm';
 import { LossChart } from './vizualisation/lossChart';
@@ -331,6 +332,12 @@ export const ModelManagement: FC = () => {
 
       {currentModel && currentModel.kind === 'bert' && currentBertModelInformations && (
         <div>
+          <ValidateButtons
+            modelName={currentBertModel}
+            kind="bert"
+            id="compute-prediction-training"
+            buttonLabel="Compute predictions"
+          />
           <div className="my-3"></div>
           <DisplayScores
             title={'Validation scores from the training data (internal validation)'}
