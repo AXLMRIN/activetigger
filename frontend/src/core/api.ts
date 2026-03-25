@@ -1936,6 +1936,24 @@ export async function deleteGenModel(project: string, modelId: number) {
   if (res.error) console.error(res.error);
 }
 
+export async function fetchOllamaModels(
+  endpoint: string,
+): Promise<Array<{ slug: string; name: string }>> {
+  const baseUrl = config.api.url.replace(/\/+$/, '');
+  const url = `${baseUrl}/generate/ollama/models?endpoint=${encodeURIComponent(endpoint)}`;
+  const auth = JSON.parse(localStorage.getItem('activeTigger.auth') || '{}');
+  const res = await fetch(url, {
+    headers: {
+      ...(auth.access_token ? { Authorization: `Bearer ${auth.access_token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    throw new Error(detail?.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 /**
  * Post generate data
  */

@@ -1,6 +1,6 @@
 import { ChangeEvent, FC, useEffect, useState } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
-import { useGetGenModels } from '../../core/api';
+import { fetchOllamaModels, useGetGenModels } from '../../core/api';
 import { useNotifications } from '../../core/notifications';
 import { GenerationModelApi, GenModel, SupportedAPI } from '../../types';
 
@@ -14,8 +14,11 @@ export const GenModelSetupForm: FC<{
   const [availableAPIs, setAvailableAPIs] = useState<GenerationModelApi[]>([]);
   const [selectedAPI, setSelectedAPI] = useState<GenerationModelApi>(availableAPIs[0]);
   const [modelName, setModelName] = useState<string>('');
+  const [ollamaEndpoint, setOllamaEndpoint] = useState<string>('');
+  const [ollamaModels, setOllamaModels] = useState<Array<{ slug: string; name: string }>>([]);
+  const [ollamaLoading, setOllamaLoading] = useState(false);
   const { models } = useGetGenModels();
-  const { register, handleSubmit } = useForm<FormValues>();
+  const { register, handleSubmit, setValue } = useForm<FormValues>();
   useEffect(() => {
     const fetchModels = async () => {
       setAvailableAPIs(await models());
@@ -32,12 +35,14 @@ export const GenModelSetupForm: FC<{
       throw new Error(`Invalid index choice: ${index}`);
     }
     setSelectedAPI(availableAPIs[index]);
+    setOllamaModels([]);
+    setOllamaEndpoint('');
   };
 
   const onSubmit: SubmitHandler<FormValues> = (data: FormValues) => {
     const slug = data.model;
     const name = modelName;
-    const endpoint = data.endpoint;
+    const endpoint = selectedAPI?.name === 'Ollama' ? ollamaEndpoint : data.endpoint;
     const credentials = data.credentials;
     if (slug === null || slug === '') {
       notify({ type: 'error', message: 'You must select a model' });
@@ -45,6 +50,10 @@ export const GenModelSetupForm: FC<{
     }
     if (name === null || name === '') {
       notify({ type: 'error', message: 'You must select a name' });
+      return;
+    }
+    if (selectedAPI?.name === 'Ollama' && (!endpoint || endpoint === '')) {
+      notify({ type: 'error', message: 'You must provide an Ollama endpoint' });
       return;
     }
     add({
@@ -64,6 +73,27 @@ export const GenModelSetupForm: FC<{
     setModelName(selectedAPI.name + '-' + e.target.value);
   };
 
+  const handleFetchOllamaModels = async () => {
+    if (!ollamaEndpoint) {
+      notify({ type: 'error', message: 'Please enter an Ollama endpoint URL' });
+      return;
+    }
+    setOllamaLoading(true);
+    try {
+      const models = await fetchOllamaModels(ollamaEndpoint);
+      setOllamaModels(models);
+      if (models.length > 0) {
+        setValue('model', models[0].slug);
+        setModelName(selectedAPI.name + '-' + models[0].slug);
+      }
+    } catch (e) {
+      notify({ type: 'error', message: `Failed to fetch models: ${e}` });
+      setOllamaModels([]);
+    } finally {
+      setOllamaLoading(false);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <label htmlFor="api">API </label>
@@ -77,9 +107,47 @@ export const GenModelSetupForm: FC<{
       {(() => {
         const inputs = [];
         if (selectedAPI !== undefined) {
-          if (selectedAPI.name === 'OpenAI' || selectedAPI.name === 'ilaas')
+          if (selectedAPI.name === 'Ollama') {
             inputs.push(
-              <div>
+              <div key="endpoint">
+                <label htmlFor="endpoint">Endpoint</label>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    id="endpoint"
+                    placeholder="enter the url of the Ollama server"
+                    value={ollamaEndpoint}
+                    onChange={(e) => setOllamaEndpoint(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={handleFetchOllamaModels}
+                    disabled={ollamaLoading}
+                  >
+                    {ollamaLoading ? 'Loading...' : 'Fetch models'}
+                  </button>
+                </div>
+              </div>,
+            );
+            if (ollamaModels.length > 0) {
+              inputs.push(
+                <div key="model">
+                  <label htmlFor="model">Model</label>
+                  <select id="model" {...register('model', { onChange: onModelChange })}>
+                    {ollamaModels.map((model) => (
+                      <option key={model.slug} value={model.slug}>
+                        {model.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>,
+              );
+            }
+          } else if (selectedAPI.name === 'OpenAI' || selectedAPI.name === 'ilaas') {
+            inputs.push(
+              <div key="model">
                 <label htmlFor="model">Model</label>
                 <select id="model" {...register('model', { onChange: onModelChange })}>
                   {selectedAPI.models.map((model) => (
@@ -90,9 +158,9 @@ export const GenModelSetupForm: FC<{
                 </select>
               </div>,
             );
-          else {
+          } else {
             inputs.push(
-              <div>
+              <div key="model">
                 <label htmlFor="model">Model</label>
                 <input
                   type="text"
@@ -104,7 +172,7 @@ export const GenModelSetupForm: FC<{
             );
             if (selectedAPI.name !== 'OpenRouter')
               inputs.push(
-                <div>
+                <div key="endpoint">
                   <label htmlFor="endpoint">Endpoint</label>
                   <input
                     type="text"
@@ -118,7 +186,7 @@ export const GenModelSetupForm: FC<{
 
           if (selectedAPI.name !== 'Ollama')
             inputs.push(
-              <div>
+              <div key="credentials">
                 <label htmlFor="credentials">API Credentials</label>
                 <input
                   type="text"

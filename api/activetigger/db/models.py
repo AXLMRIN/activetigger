@@ -183,8 +183,8 @@ class GenModels(Base):
     __table_args__ = (
         UniqueConstraint(
             "project_slug",
-            "slug",
-            name="fkc_project_slug_slug",
+            "name",
+            name="fkc_project_slug_name",
         ),
     )
 

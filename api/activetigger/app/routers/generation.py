@@ -24,6 +24,7 @@ from activetigger.datamodels import (
     UserInDBModel,
 )
 from activetigger.generation.generations import Generations
+from activetigger.generation.ollama import Ollama
 from activetigger.orchestrator import orchestrator
 from activetigger.project import Project
 
@@ -38,6 +39,17 @@ def list_generation_models() -> list[GenerationModelApi]:
     """
     try:
         return Generations.get_available_models()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/generate/ollama/models")
+def list_ollama_models(endpoint: str) -> list[dict[str, str]]:
+    """
+    Query an Ollama server endpoint to list available models
+    """
+    try:
+        return Ollama.list_models(endpoint)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

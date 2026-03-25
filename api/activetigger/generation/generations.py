@@ -50,11 +50,7 @@ class Generations:
             ),
             GenerationModelApi(
                 name="Ollama",
-                models=[
-                    GenerationAvailableModel(
-                        slug="llama3.1:70b", api="Ollama", name="Llama3.1 - 70b"
-                    )
-                ],
+                models=[],
             ),
             GenerationModelApi(name="OpenRouter", models=[]),
             GenerationModelApi(
