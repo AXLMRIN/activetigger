@@ -100,6 +100,7 @@ class QuickModels:
         cv10: bool = False,
         balance_classes: bool = False,
         exclude_labels: list[str] = [],
+        test_size: float = 0.2,
         retrain: bool = False,
         texts: pd.Series | None = None,
     ) -> str:
@@ -199,6 +200,7 @@ class QuickModels:
             "texts": texts,
             "random_seed": config.random_seed,
             "exclude_labels": exclude_labels,
+            "test_size": test_size,
         }
         unique_id = self.queue.add_task("train_quickmodel", project_slug, TrainML(**args))
         del args
@@ -219,6 +221,7 @@ class QuickModels:
             cv10=cv10,
             balance_classes=balance_classes,
             exclude_labels=exclude_labels,
+            test_size=test_size,
             retrain=retrain,
             dataset="train",
         )

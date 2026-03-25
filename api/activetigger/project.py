@@ -622,6 +622,7 @@ class Project:
             cv10=quickmodel.cv10 or False,
             balance_classes=quickmodel.balance_classes or False,
             exclude_labels=quickmodel.exclude_labels,
+            test_size=quickmodel.test_size,
             retrain=retrain,
             texts=self.data.train["text"] if self.data.train is not None else None,
         )
@@ -650,6 +651,7 @@ class Project:
             cv10=model.cv10,
             balance_classes=model.balance_classes,
             exclude_labels=model.exclude_labels,
+            test_size=model.test_size,
         )
         self.train_quickmodel(quickmodel, username, retrain=True)
 

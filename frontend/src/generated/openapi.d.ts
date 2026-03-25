@@ -3297,6 +3297,11 @@ export interface components {
              * @default []
              */
             exclude_labels: string[];
+            /**
+             * Test Size
+             * @default 0.2
+             */
+            test_size: number;
         };
         /**
          * QuickModelOutModel

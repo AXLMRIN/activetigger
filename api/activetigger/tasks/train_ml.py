@@ -46,6 +46,7 @@ class TrainML(BaseTask):
         cv10: bool = False,
         balance_classes: bool = False,
         exclude_labels: list[str] = [],
+        test_size: float = 0.2,
         retrain: bool = False,
         texts: pd.Series | None = None,
         random_seed: int = 42,
@@ -61,6 +62,7 @@ class TrainML(BaseTask):
         self.cv10 = cv10
         self.balance_classes = balance_classes
         self.exclude_labels = exclude_labels  # labels are excluded earlier on in the pipeline, but we must save this information somewhere
+        self.test_size = test_size
         self.path = path
         self.model_path = path.joinpath(name)
         self.retrain = retrain
@@ -184,6 +186,7 @@ class TrainML(BaseTask):
             cv10=self.cv10,
             balance_classes=self.balance_classes,
             exclude_labels=self.exclude_labels,
+            test_size=self.test_size,
             retrain=self.retrain,
             proba=proba,
             statistics_train=metrics_train,
@@ -232,7 +235,7 @@ class TrainML(BaseTask):
 
         X_for_training, Y_for_training = self.__check_data(self.X, self.Y, self.exclude_labels)
 
-        X_train, X_test, Y_train, Y_test = self.__split_set(X_for_training, Y_for_training)
+        X_train, X_test, Y_train, Y_test = self.__split_set(X_for_training, Y_for_training, self.test_size)
         task_timer.stop("setup")
 
         self._check_cancelled()

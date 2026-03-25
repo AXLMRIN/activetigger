@@ -648,6 +648,7 @@ class QuickModelInModel(BaseModel):
     cv10: bool = False
     balance_classes: bool = False
     exclude_labels: list[str] = []
+    test_size: float = 0.2
 
 
 class QuickModelComputing(ProcessComputing):
@@ -667,6 +668,7 @@ class QuickModelComputing(ProcessComputing):
     cv10: bool = False
     balance_classes: bool = False
     exclude_labels: list[str] = []
+    test_size: float = 0.2
     retrain: bool = False
 
 
@@ -689,6 +691,7 @@ class QuickModelComputed(BaseModel):
     cv10: bool = False
     balance_classes: bool = False
     exclude_labels: list[str] = []
+    test_size: float = 0.2
     retrain: bool = False
     proba: DataFrame | None = None
     model: BaseEstimator

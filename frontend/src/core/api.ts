@@ -933,6 +933,7 @@ export function useTrainQuickModel(projectSlug: string | null, scheme: string | 
             cv10: formData.cv10,
             balance_classes: formData.balance_classes,
             exclude_labels: formData.exclude_labels,
+            test_size: formData.test_size ?? 0.2,
           },
         });
 

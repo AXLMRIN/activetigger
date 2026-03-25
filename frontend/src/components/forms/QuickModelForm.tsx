@@ -71,6 +71,7 @@ export const QuickModelForm: FC<QuickModelFormProps> = ({
     },
     balance_classes: false,
     cv10: false,
+    test_size: 0.2,
     dichotomize: kindScheme == 'multilabel' ? availableLabels[0] : undefined,
     features: defaultFeatures.map((e) => e.value),
   });
@@ -244,6 +245,16 @@ export const QuickModelForm: FC<QuickModelFormProps> = ({
               </div>
             ))
         }
+
+        <label htmlFor="test_size">Train-eval split size</label>
+        <input
+          type="number"
+          step="0.1"
+          min="0"
+          max="0.9"
+          id="test_size"
+          {...register('test_size', { valueAsNumber: true })}
+        />
 
         <label htmlFor="cv10">
           <input type="checkbox" id="cv10" {...register('cv10')} />
