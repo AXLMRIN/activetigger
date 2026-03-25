@@ -129,10 +129,10 @@ export const ModelManagement: FC = () => {
     currentQuickModelName,
   );
   useEffect(() => {
-    if (currentQuickModelInformations) {
+    if (currentQuickModelName) {
       reFetchQuickModel();
     }
-  }, [currentQuickModelInformations, isComputing, reFetchQuickModel]);
+  }, [isComputing, currentQuickModelName, reFetchQuickModel]);
 
   // delete quickmodel
   const { deleteQuickModel } = useDeleteQuickModel(projectSlug || null);
