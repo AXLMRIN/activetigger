@@ -1274,6 +1274,9 @@ class Project:
             data = data.dropna(subset=["labels"])
 
         # select columns + order
+        # drop dataset_annotation (redundant with dataset)
+        cols_to_drop = [col for col in data.columns if col.endswith("dataset_annotation")]
+        data = data.drop(columns=cols_to_drop, errors="ignore")
 
         cols = [col for col in data.columns if not (col.endswith("id_internal"))]
         data = data[cols]
