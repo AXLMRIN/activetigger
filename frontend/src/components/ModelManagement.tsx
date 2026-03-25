@@ -60,7 +60,9 @@ export const ModelManagement: FC = () => {
     currentScheme && currentProject && currentProject.schemes.available[currentScheme]
       ? currentProject.schemes.available[currentScheme].labels
       : [];
-  const features = availableFeatures.map((e) => ({ value: e, label: e }));
+  const features = availableFeatures
+    .map((e) => ({ value: e, label: e }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   // quickmodel
   const baseQuickModels = currentProject?.quickmodel.options

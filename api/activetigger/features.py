@@ -365,7 +365,7 @@ class Features:
 
         name = f"{kind}_{name}"
         if self.exists(name):
-            raise ValueError("This regex already exists")
+            raise ValueError("This regex name already exists")
 
         if kind == "regex":
             if "value" not in parameters:

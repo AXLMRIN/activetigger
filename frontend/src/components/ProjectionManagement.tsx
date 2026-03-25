@@ -96,7 +96,9 @@ export const ProjectionManagement: FC<ProjectionManagementProps> = ({
   const selectedMethod = watch('method'); // state for the model selected to modify parameters
 
   // available features
-  const features = availableFeatures.map((e) => ({ value: e, label: e }));
+  const features = availableFeatures
+    .map((e) => ({ value: e, label: e }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   // action when form validated
   const { updateProjection } = useUpdateProjection(projectName, currentScheme);

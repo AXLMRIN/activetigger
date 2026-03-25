@@ -64,7 +64,9 @@ export const QuickModelManagement: FC<QuickModelManagementProps> = ({
   const { notify } = useNotifications();
 
   // available features
-  const features = availableFeatures.map((e) => ({ value: e, label: e }));
+  const features = availableFeatures
+    .map((e) => ({ value: e, label: e }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   // current quickmodel
   const [currentQuickModelName, setCurrentQuickModelName] = useState<string | null>(
