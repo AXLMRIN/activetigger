@@ -324,19 +324,27 @@ class Bertopic:
         else:
             raise FileNotFoundError(f"Model {name} does not exist.")
 
-    def export_clusters(self, name: str) -> FileResponse:
+    def export_clusters(self, name: str, col_id: str | None = None) -> FileResponse:
         """
         Export clusters from a BERTopic model.
+        Rename id_external to original column name for consistency with other exports.
         """
         path_model = self.path.joinpath("runs").joinpath(name)
-        if path_model.exists():
-            clusters_path = path_model.joinpath("bertopic_clusters.csv")
-            if clusters_path.exists():
-                return FileResponse(path=clusters_path, filename=f"bertopic_clusters_{name}.csv")
-            else:
-                raise FileNotFoundError(f"Clusters for model {name} do not exist.")
-        else:
+        if not path_model.exists():
             raise FileNotFoundError(f"Model {name} does not exist.")
+        clusters_path = path_model.joinpath("bertopic_clusters.csv")
+        if not clusters_path.exists():
+            raise FileNotFoundError(f"Clusters for model {name} do not exist.")
+
+        if col_id is not None:
+            df = pd.read_csv(clusters_path)
+            if "id_external" in df.columns:
+                df.rename(columns={"id_external": col_id}, inplace=True)
+            export_path = path_model.joinpath("bertopic_clusters_export.csv")
+            df.to_csv(export_path, index=False)
+            return FileResponse(path=export_path, filename=f"bertopic_clusters_{name}.csv")
+
+        return FileResponse(path=clusters_path, filename=f"bertopic_clusters_{name}.csv")
 
     def export_report(self, name: str) -> FileResponse:
         """

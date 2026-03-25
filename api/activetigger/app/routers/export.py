@@ -225,7 +225,7 @@ def export_bertopics_clusters(
     """
     test_rights(ProjectAction.EXPORT_DATA, current_user.username, project.name)
     try:
-        return project.bertopic.export_clusters(name=name)
+        return project.bertopic.export_clusters(name=name, col_id=project.params.col_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
