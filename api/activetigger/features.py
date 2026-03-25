@@ -1,12 +1,12 @@
 import json
 import os
-import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import pandas as pd  # type: ignore[import]
 import pyarrow.parquet as pq  # type: ignore[import]
+import regex
 from pandas import DataFrame, Series
 
 from activetigger.config import config
@@ -146,7 +146,7 @@ class Features:
         column_names = [i for i in parquet_file.schema.names if i != "dataset"]
 
         def find_strings_with_pattern(strings, pattern):
-            matching_strings = [s for s in strings if re.match(re.escape(pattern), s)]
+            matching_strings = [s for s in strings if regex.match(regex.escape(pattern), s)]
             return matching_strings
 
         var = set(
@@ -285,7 +285,8 @@ class Features:
             else:
                 missing.append(i)
         if len(missing) > 0:
-            print("Missing features:", missing)
+            # not necessary but to assure consistency
+            raise ValueError(f"Missing features: {missing}. They may have been deleted.")
 
         # load only needed data from file
         data = pd.read_parquet(self.path_features, columns=cols)
@@ -371,7 +372,7 @@ class Features:
             if "value" not in parameters:
                 raise ValueError("No value for regex")
 
-            pattern = re.compile(parameters["value"])
+            pattern = regex.compile(parameters["value"])
             if parameters.get("regex_count", False):
                 f = df.apply(lambda x: len(pattern.findall(x)))
             else:
@@ -380,6 +381,7 @@ class Features:
                 "name": name,
                 "kind": kind,
                 "regex": parameters["value"],
+                "mode": "count" if parameters.get("regex_count", False) else "presence",
                 "count": int(f.sum()),
                 "username": username,
             }

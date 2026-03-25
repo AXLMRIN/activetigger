@@ -10,6 +10,7 @@ from urllib.parse import quote
 
 import bcrypt
 import pandas as pd  # type: ignore[import]
+import regex
 import spacy
 import torch
 from cryptography.fernet import Fernet
@@ -178,6 +179,17 @@ def clean_regex(text: str) -> str:
     if len(text) > 1 and text[-1] == "\\":
         text = text[:-1]
     return text
+
+
+def regex_contains(
+    series: pd.Series, pattern: str, case: bool = True, na: bool = False
+) -> pd.Series:
+    """
+    Like pandas str.contains but uses the `regex` module
+    to support Unicode property escapes (e.g. \\p{Ll}).
+    """
+    compiled = regex.compile(pattern, flags=0 if case else regex.IGNORECASE)
+    return series.apply(lambda x: bool(compiled.search(str(x))) if pd.notna(x) else na)
 
 
 def encrypt(text: str | None, secret_key: str | None) -> str:

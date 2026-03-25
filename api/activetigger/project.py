@@ -53,7 +53,7 @@ from activetigger.datamodels import (
 )
 from activetigger.db.manager import DatabaseManager
 from activetigger.features import Features
-from activetigger.functions import clean_regex, get_dir_size, slugify
+from activetigger.functions import clean_regex, get_dir_size, regex_contains, slugify
 from activetigger.generation.generations import Generations
 from activetigger.languagemodels import LanguageModels
 from activetigger.messages import Messages
@@ -785,22 +785,20 @@ class Project:
             df["ID"] = df.index  # duplicate the id column
             filter_san = clean_regex(next.filter)
             if "CONTEXT=" in filter_san:  # case to search in the context
-                f_regex = (
-                    df[existing_cols_contexts + ["ID"]]
-                    .apply(lambda row: " ".join(row.values.astype(str)), axis=1)
-                    .str.contains(
-                        filter_san.replace("CONTEXT=", ""),
-                        regex=True,
-                        case=True,
-                        na=False,
-                    )
+                f_regex = regex_contains(
+                    df[existing_cols_contexts + ["ID"]].apply(
+                        lambda row: " ".join(row.values.astype(str)), axis=1
+                    ),
+                    filter_san.replace("CONTEXT=", ""),
+                    case=True,
+                    na=False,
                 )
             elif "QUERY=" in filter_san:  # case to use a query
                 f_regex = cast(
                     pd.Series, df[existing_cols_contexts].eval(filter_san.replace("QUERY=", ""))
                 )
             else:
-                f_regex = df["text"].str.contains(filter_san, regex=True, case=True, na=False)
+                f_regex = regex_contains(df["text"], filter_san, case=True, na=False)
             f = f & f_regex
 
         # filter with a frame (projection coordinates)

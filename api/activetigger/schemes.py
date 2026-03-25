@@ -22,7 +22,7 @@ from activetigger.datamodels import (
 from activetigger.db import DBException
 from activetigger.db.manager import DatabaseManager
 from activetigger.db.projects import ProjectsService
-from activetigger.functions import clean_regex, slugify
+from activetigger.functions import clean_regex, regex_contains, slugify
 
 
 class SchemeCache:
@@ -396,16 +396,16 @@ class Schemes:
             if batch.contains:
                 if batch.contains.startswith("ALL=") and len(batch.contains) > 4:
                     contains_f = batch.contains.replace("ALL=", "")
-                    f_l = df["labels"].str.contains(clean_regex(contains_f)).fillna(False)
-                    f_text = df["text"].str.contains(clean_regex(contains_f)).fillna(False)
+                    f_l = regex_contains(df["labels"], clean_regex(contains_f))
+                    f_text = regex_contains(df["text"], clean_regex(contains_f))
                     f_contains = f_l | f_text
                 elif batch.contains == "HAS_COMMENT":
                     f_contains = df["comment"].fillna("").str.len() > 0
                 elif batch.contains.startswith("COMMENT=") and len(batch.contains) > 8:
                     contains_f = batch.contains.replace("COMMENT=", "")
-                    f_contains = df["comment"].str.contains(clean_regex(contains_f)).fillna(False)
+                    f_contains = regex_contains(df["comment"], clean_regex(contains_f))
                 else:
-                    f_contains = df["text"].str.contains(clean_regex(batch.contains))
+                    f_contains = regex_contains(df["text"], clean_regex(batch.contains))
             df = df[f_contains & f_labels]
 
             # normalize size
