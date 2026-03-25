@@ -74,36 +74,38 @@ export const LossChart: React.FC<LossChartProps> = ({ loss, xmax }) => {
         <VictoryLine
           data={valLossData}
           style={{
-            data: { stroke: '#c43a31' }, // Rouge pour val_loss
+            data: { stroke: '#0072B2', strokeWidth: 2 },
           }}
         />
         <VictoryScatter
           data={valLossData}
-          size={5} // <-- Adjust size here
+          size={5}
+          symbol="circle"
           style={{
-            data: { fill: '#c43a31' },
+            data: { fill: '#0072B2' },
           }}
         />
         <VictoryLine
           data={valEvalLossData}
           style={{
-            data: { stroke: '#0000ff' }, // Bleu pour val_eval_loss
+            data: { stroke: '#D55E00', strokeWidth: 2, strokeDasharray: '8,4' },
           }}
         />
         <VictoryScatter
           data={valEvalLossData}
-          size={5} // <-- Adjust size here
+          size={6}
+          symbol="triangleUp"
           style={{
-            data: { fill: '#0000ff' },
+            data: { fill: '#D55E00' },
           }}
         />
         <VictoryLine
           data={[
-            { x: minValLossPoint.x, y: 0 }, // bottom of chart
-            { x: minValLossPoint.x, y: maxY }, // top of chart
+            { x: minValLossPoint.x, y: 0 },
+            { x: minValLossPoint.x, y: maxY },
           ]}
           style={{
-            data: { stroke: 'green', strokeWidth: 2, strokeDasharray: '5,5' }, // dashed red line
+            data: { stroke: '#009E73', strokeWidth: 2, strokeDasharray: '5,5' },
           }}
         />
         <VictoryLegend
@@ -114,12 +116,12 @@ export const LossChart: React.FC<LossChartProps> = ({ loss, xmax }) => {
           gutter={20}
           style={{ border: { stroke: 'black' }, title: { fontSize: 10 } }}
           data={[
-            { name: 'Train Loss', symbol: { fill: '#c43a31' } },
-            { name: 'Eval Loss', symbol: { fill: '#0000ff' } },
+            { name: 'Train Loss', symbol: { fill: '#0072B2', type: 'circle' } },
+            { name: 'Eval Loss', symbol: { fill: '#D55E00', type: 'triangleUp' } },
             {
               name: 'Best model',
               symbol: {
-                fill: 'green',
+                fill: '#009E73',
                 type: 'square',
                 size: 3,
               },
