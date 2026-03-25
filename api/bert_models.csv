@@ -22,3 +22,7 @@ PlanTL-GOB-ES/roberta-base-bne,5,,es, 440, 125,
 EuroBERT/EuroBERT-610m,6,,multi,3000,610
 facebookAI/xlm-roberta-base,5,,multi,1100,280,
 facebookAI/xlm-roberta-large,6,,multi,2200,560,
+microsoft/deberta-v3-small,5,,en, 550, 44,
+microsoft/deberta-v3-base,5,,en, 710, 86,
+microsoft/deberta-v3-large,5,,en, 1500, 304,
+microsoft/deberta-v2-xlarge,5,,en, 3600, 900,
