@@ -29,6 +29,7 @@ import { ValidateButtons } from './ValidateButton';
 import { ModelCreationForm } from './forms/ModelCreationForm';
 import { QuickModelForm } from './forms/QuickModelForm';
 import { LossChart } from './vizualisation/lossChart';
+import { Tooltip } from 'react-tooltip';
 
 interface renameModel {
   new_name: string;
@@ -231,7 +232,9 @@ export const ModelManagement: FC = () => {
             setCurrentQuickModelName(null);
           }}
           className={cx('model-pill ', isComputing ? 'disabled' : '')}
+          disabled={kindScheme === 'span'}
           id="create-new"
+          style={kindScheme === 'span' ? { cursor: 'not-allowed' } : {}}
         >
           <FaPlusCircle size={20} /> Create new quick model
         </button>
@@ -254,10 +257,15 @@ export const ModelManagement: FC = () => {
             setCurrentBertModel(null);
           }}
           className={cx('model-pill ', isComputing ? 'disabled' : '')}
+          disabled={kindScheme === 'span'}
           id="create-new"
+          style={kindScheme === 'span' ? { cursor: 'not-allowed' } : {}}
         >
           <FaPlusCircle size={20} /> Create new BERT model
         </button>
+        <Tooltip anchorSelect="#create-new">
+          {kindScheme === 'span' ? 'Span classification is not yet available' : 'Train a model'}
+        </Tooltip>
       </ModelsPillDisplay>
 
       {isComputing && authenticatedUser?.username && (
