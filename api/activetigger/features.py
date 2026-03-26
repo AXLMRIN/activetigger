@@ -365,8 +365,8 @@ class Features:
             raise ValueError("Kind not recognized")
 
         name = f"{kind}_{name}"
-        if self.exists(name):
-            raise ValueError("This regex name already exists")
+        if kind not in ("sentence-embeddings",) and self.exists(name):
+            raise ValueError("This feature name already exists")
 
         if kind == "regex":
             if "value" not in parameters:
@@ -444,9 +444,11 @@ class Features:
                 ),
                 queue="gpu",
             )
-            # append short model name (without provider prefix)
+            # name as {model}_{context_size}
             short_model = model.split("/")[-1] if "/" in model else model
-            name = f"{name}_{short_model}"
+            name = f"{short_model}_{parameters['max_length_tokens']}"
+            if self.exists(name):
+                raise ValueError("This feature name already exists")
             parameters = {
                 "model": model,
                 "name": name,

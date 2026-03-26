@@ -260,7 +260,7 @@ export const ProjectCreationForm: FC = () => {
             if (status === 'existing') {
               clearInterval(intervalId);
               if (computeFeatures)
-                addFeature(slug, 'sentence-embeddings', 'sentence-embeddings', {
+                addFeature(slug, 'sentence-embeddings', 'default', {
                   model: 'generic',
                 });
               resetContext();
