@@ -1,7 +1,8 @@
-import { FC, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useState } from 'react';
+import Modal from 'react-bootstrap/Modal';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
-import { useParams } from 'react-router-dom';
+import { useBlocker, useParams } from 'react-router-dom';
 import { useAppContext } from '../core/useAppContext';
 
 import { useLocation } from 'react-router-dom';
@@ -35,6 +36,29 @@ export const ProjectTagPage: FC = () => {
   const isValid = project?.params.valid;
   const isTest = project?.params.test;
 
+  // track unsaved changes in the curate panel
+  const [hasDirtyChanges, setHasDirtyChanges] = useState(false);
+  const [pendingTab, setPendingTab] = useState<string | null>(null);
+
+  const handleDirtyChange = useCallback((dirty: boolean) => {
+    setHasDirtyChanges(dirty);
+  }, []);
+
+  // block route navigation (sidebar) when there are unsaved changes
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => {
+    return currentLocation.pathname !== nextLocation.pathname && hasDirtyChanges;
+  });
+
+  // intercept tab switches
+  const handleTabSelect = (key: string | null) => {
+    const k = key || 'tag';
+    if (hasDirtyChanges && k !== activeTab) {
+      setPendingTab(k);
+    } else {
+      setActiveTab(k);
+    }
+  };
+
   if (!projectName) return;
 
   return (
@@ -42,7 +66,7 @@ export const ProjectTagPage: FC = () => {
       {!canEdit || nbUsers < 2 ? (
         <AnnotationManagement />
       ) : (
-        <Tabs className="mt-3" activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'tag')}>
+        <Tabs className="mt-3" activeKey={activeTab} onSelect={handleTabSelect}>
           <Tab eventKey="tag" title="Tag">
             <AnnotationManagement />
           </Tab>
@@ -63,7 +87,11 @@ export const ProjectTagPage: FC = () => {
               </div>
               <Tabs id="panel" className="mt-3" defaultActiveKey="scheme">
                 <Tab eventKey="scheme" title="Current scheme">
-                  <AnnotationDisagreementManagement projectSlug={projectName} dataset={dataset} />
+                  <AnnotationDisagreementManagement
+                    projectSlug={projectName}
+                    dataset={dataset}
+                    onDirtyChange={handleDirtyChange}
+                  />
                 </Tab>
                 <Tab eventKey="between" title="Between schemes">
                   <SchemesComparisonManagement projectSlug={projectName} dataset={dataset} />
@@ -73,6 +101,45 @@ export const ProjectTagPage: FC = () => {
           )}
         </Tabs>
       )}
+
+      {/* Modal for tab switch with unsaved changes */}
+      <Modal show={pendingTab !== null} onHide={() => setPendingTab(null)}>
+        <Modal.Header>
+          <Modal.Title>Unsaved changes</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>Are you sure you want to leave? Unsaved modifications will be lost.</Modal.Body>
+        <Modal.Footer>
+          <button className="btn btn-secondary" onClick={() => setPendingTab(null)}>
+            Cancel
+          </button>
+          <button
+            className="btn btn-danger"
+            onClick={() => {
+              setHasDirtyChanges(false);
+              setActiveTab(pendingTab!);
+              setPendingTab(null);
+            }}
+          >
+            Leave
+          </button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal for route navigation with unsaved changes */}
+      <Modal show={blocker.state === 'blocked'} onHide={blocker.reset}>
+        <Modal.Header>
+          <Modal.Title>Unsaved changes</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>Are you sure you want to leave? Unsaved modifications will be lost.</Modal.Body>
+        <Modal.Footer>
+          <button className="btn btn-secondary" onClick={blocker.reset}>
+            Cancel
+          </button>
+          <button className="btn btn-danger" onClick={blocker.proceed}>
+            Leave
+          </button>
+        </Modal.Footer>
+      </Modal>
     </ProjectPageLayout>
   );
 };
