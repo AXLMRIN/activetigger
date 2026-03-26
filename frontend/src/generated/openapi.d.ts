@@ -2182,12 +2182,18 @@ export interface components {
         };
         /** Body_upload_file_dataset_files_add_dataset_post */
         Body_upload_file_dataset_files_add_dataset_post: {
-            /** File */
+            /**
+             * File
+             * Format: binary
+             */
             file: string;
         };
         /** Body_upload_file_project_files_add_project_post */
         Body_upload_file_project_files_add_project_post: {
-            /** File */
+            /**
+             * File
+             * Format: binary
+             */
             file: string;
         };
         /**
@@ -2407,6 +2413,8 @@ export interface components {
             type: string;
             /** Name */
             name: string;
+            /** Use Default Name */
+            use_default_name: boolean;
             /** Parameters */
             parameters: {
                 [key: string]: (string | number) | undefined;
@@ -3627,10 +3635,6 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
-            /** Input */
-            input?: unknown;
-            /** Context */
-            ctx?: Record<string, never>;
         };
         /**
          * WaitingModel

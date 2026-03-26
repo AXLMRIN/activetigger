@@ -52,7 +52,7 @@ def post_embeddings(
 
         # compute features
         project.features.compute(
-            df, feature.name, feature.type, feature.parameters, current_user.username
+            df, feature.name, feature.use_default_name, feature.type, feature.parameters, current_user.username
         )
         orchestrator.log_action(
             current_user.username, f"COMPUTE FEATURE: {feature.type}", project.name
