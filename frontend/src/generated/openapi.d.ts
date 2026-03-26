@@ -1336,6 +1336,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/generate/ollama/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Ollama Models
+         * @description Query an Ollama server endpoint to list available models
+         */
+        get: operations["list_ollama_models_generate_ollama_models_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/generate/models": {
         parameters: {
             query?: never;
@@ -5785,6 +5805,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GenerationModelApi"][];
+                };
+            };
+        };
+    };
+    list_ollama_models_generate_ollama_models_get: {
+        parameters: {
+            query: {
+                endpoint: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string | undefined;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

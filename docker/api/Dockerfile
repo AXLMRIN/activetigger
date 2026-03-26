@@ -11,4 +11,4 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 USER python
 
-
+ENV UV_PROJECT_ENVIRONMENT=/home/python/venv

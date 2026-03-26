@@ -8,7 +8,7 @@ import { useRetrainQuickModel, useTrainQuickModel } from '../../core/api';
 import { useNotifications } from '../../core/notifications';
 import { useAppContext } from '../../core/useAppContext';
 import { getRandomName, sortDatesAsStrings } from '../../core/utils';
-import { ActiveModel } from '../../types';
+import { ActiveModel, QuickModelInModel } from '../../types';
 import { ButtonNewFeature } from '../ButtonNewFeature';
 
 interface SelectActiveLearningProps {
@@ -128,7 +128,7 @@ export const SelectActiveLearning: FC<SelectActiveLearningProps> = ({
       balance_classes: false,
       exclude_labels: [],
     };
-    trainQuickModel(formData);
+    trainQuickModel(formData as unknown as QuickModelInModel);
     setActiveMenu(false);
     if (setSelectFirstModelTrained) setSelectFirstModelTrained(true);
   };
