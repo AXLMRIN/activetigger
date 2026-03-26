@@ -410,7 +410,7 @@ class Features:
 
         name = self.__create_pretty_name(kind, name, use_default_name, parameters)
         if self.exists(name):
-            raise ValueError("This regex name already exists")
+            raise ValueError("This name already exists")
 
         if kind == "regex":
             if "value" not in parameters:
