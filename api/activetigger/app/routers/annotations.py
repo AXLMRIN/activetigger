@@ -219,7 +219,7 @@ def post_reconciliation(
     """
     Post a label for all user in a list
     """
-    test_rights(ProjectAction.UPDATE, current_user.username, project.name)
+    test_rights(ProjectAction.ADD, current_user.username, project.name)
     try:
         project.schemes.reconciliate_element(element, current_user.username)
         orchestrator.log_action(

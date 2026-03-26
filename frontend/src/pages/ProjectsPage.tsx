@@ -33,9 +33,10 @@ export const ProjectsPage: FC = () => {
     setRows(
       (projects || []).filter((project) => {
         const projectName = project.parameters.project_name.toLowerCase();
+        const projectSlug = project.parameters.project_slug.toLowerCase();
         const createdBy = project.created_by.toLowerCase();
 
-        return projectName.includes(searchValue) || createdBy.includes(searchValue);
+        return projectName.includes(searchValue) || projectSlug.includes(searchValue) || createdBy.includes(searchValue);
       }),
     );
   };

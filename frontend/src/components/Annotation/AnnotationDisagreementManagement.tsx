@@ -11,11 +11,13 @@ import { useAppContext } from '../../core/useAppContext';
 interface AnnotationDisagreementManagementProps {
   projectSlug: string;
   dataset: string;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 export const AnnotationDisagreementManagement: FC<AnnotationDisagreementManagementProps> = ({
   projectSlug,
   dataset,
+  onDirtyChange,
 }) => {
   const {
     appContext: { currentScheme, currentProject: project },
@@ -44,6 +46,11 @@ export const AnnotationDisagreementManagement: FC<AnnotationDisagreementManageme
 
   // state elements to validate
   const [changes, setChanges] = useState<{ [key: string]: string }>({});
+
+  // notify parent when dirty state changes
+  useEffect(() => {
+    onDirtyChange?.(Object.keys(changes).length > 0);
+  }, [changes, onDirtyChange]);
 
   // function to validate changes
   const validateChanges = () => {

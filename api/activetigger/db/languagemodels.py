@@ -31,11 +31,13 @@ class ModelsService:
             models = session.execute(
                 select(
                     Models.name, Models.parameters, Models.path, Models.scheme_name, Models.time
-                ).filter_by(
+                )
+                .filter_by(
                     project_slug=project_slug,
                     status="trained",
                     kind=kind,
                 )
+                .order_by(Models.time.desc())
             ).all()
         return [
             ModelDescriptionModel(
