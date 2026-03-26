@@ -288,7 +288,14 @@ export const AnnotationManagement: FC = () => {
         nSample={nSample}
         statistics={statistics}
       />
-
+      {elementId === 'noelement' && (
+        <div className="alert horizontal center">
+          No element available
+          <button className="btn-primary-action" onClick={fetchNextElement}>
+            <LuRefreshCw size={20} /> Get element
+          </button>
+        </div>
+      )}
       {/**
        * ANNOTATION BLOCK
        **/}
@@ -304,42 +311,34 @@ export const AnnotationManagement: FC = () => {
           } as CSSProperties
         }
       >
-        {elementId === 'noelement' ? (
-          <div className="alert horizontal center">
-            <div>
-              No element available
-              <button className="btn-primary-action" onClick={fetchNextElement}>
-                <LuRefreshCw size={20} /> Get element
-              </button>
-            </div>
-          </div>
-        ) : kindScheme !== 'span' ? (
-          <>
-            <TextClassificationPanel
-              element={element as ElementOutModel}
-              displayConfig={displayConfig}
-              textInFrame={textInFrame}
-              textOutFrame={textOutFrame}
-              validHighlightText={validHighlightText}
-              elementId={elementId as string}
-              lastTag={lastTag as string}
-              phase={effectivePhase}
-              frameRef={frameRef as unknown as HTMLDivElement}
-            />
-          </>
-        ) : (
-          <>
-            <TextSpanPanel
-              elementId={elementId || 'noelement'}
-              displayConfig={displayConfig}
-              postAnnotation={postAnnotation}
-              labels={availableLabels}
-              text={element?.text as string}
-              lastTag={lastTag as string}
-              element={element as ElementOutModel}
-            />
-          </>
-        )}
+        {elementId !== 'noelement' &&
+          (kindScheme !== 'span' ? (
+            <>
+              <TextClassificationPanel
+                element={element as ElementOutModel}
+                displayConfig={displayConfig}
+                textInFrame={textInFrame}
+                textOutFrame={textOutFrame}
+                validHighlightText={validHighlightText}
+                elementId={elementId as string}
+                lastTag={lastTag as string}
+                phase={effectivePhase}
+                frameRef={frameRef as unknown as HTMLDivElement}
+              />
+            </>
+          ) : (
+            <>
+              <TextSpanPanel
+                elementId={elementId || 'noelement'}
+                displayConfig={displayConfig}
+                postAnnotation={postAnnotation}
+                labels={availableLabels}
+                text={element?.text as string}
+                lastTag={lastTag as string}
+                element={element as ElementOutModel}
+              />
+            </>
+          ))}
 
         {elementId !== 'noelement' && (
           <>
