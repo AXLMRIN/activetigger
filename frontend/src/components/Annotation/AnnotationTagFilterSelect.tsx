@@ -5,7 +5,7 @@ import { omit, sortBy, uniq } from 'lodash';
 import { useAppContext } from '../../core/useAppContext';
 import { truncateInMiddle } from '../../core/utils';
 import { SelectionConfig } from '../../types';
-import { AnnotationIcon, CommentIcon, NoAnnotationIcon, PredictedIcon, UserIcon } from '../Icons';
+import { AnnotationIcon, CommentIcon, NoAnnotationIcon, UserIcon } from '../Icons';
 
 export interface TagFilterOption {
   sample: string;
@@ -38,7 +38,6 @@ const OptionIcon: FC<{ option: TagFilterOption }> = ({ option }) => (
     )}
     {option.sample === 'tagged' && option.user === undefined && <AnnotationIcon className="me-1" />}
     {option.sample === 'tagged' && option.user !== undefined && <UserIcon className="me-1" />}
-    {option.sample === 'predicted' && <PredictedIcon className="me-1" />}
     {option.sample === 'commented' && <CommentIcon className="me-1" />}
   </>
 );
@@ -68,7 +67,7 @@ export const AnnotationTagFilterSelect: FC<AnnotationTagFilterSelectProps> = ({
 }) => {
   // context data
   const {
-    appContext: { selectionConfig, currentProject: project, activeModel },
+    appContext: { selectionConfig, currentProject: project },
     setAppContext,
   } = useAppContext();
 
@@ -76,34 +75,25 @@ export const AnnotationTagFilterSelect: FC<AnnotationTagFilterSelectProps> = ({
   const tagFilterOptions: TagFilterOption[] = useMemo(() => {
     const samples =
       // all = no option selected so we remove it from options
-      // predicted = only show when an active model is set
       project?.next.sample
         .filter((s) => s !== 'all')
-        .filter((s) => s !== 'predicted')
         .map((s) => ({ sample: s, label: undefined, user: undefined })) || [];
     const labels = availableLabels.map((l) => ({
       sample: 'tagged',
       label: l,
       user: undefined,
     }));
-    const predictedLabels = activeModel
-      ? availableLabels.map((l) => ({
-          sample: 'predicted',
-          label: l,
-          user: undefined,
-        }))
-      : [];
     const users =
       project?.users?.users.map((u) => ({
         sample: 'tagged',
         label: undefined,
         user: u,
       })) || [];
-    return [...samples, ...labels, ...predictedLabels, ...users].map((o) => ({
+    return [...samples, ...labels, ...users].map((o) => ({
       ...o,
       value: filterOptionValue(o),
     }));
-  }, [project?.next.sample, availableLabels, project?.users?.users, activeModel]);
+  }, [project?.next.sample, availableLabels, project?.users?.users]);
   // handle option coherence by disabling options depending on current selection Config
   const isTagFilterOptionDisabled = useCallback(
     (option: TagFilterOption) => {
@@ -152,7 +142,7 @@ export const AnnotationTagFilterSelect: FC<AnnotationTagFilterSelectProps> = ({
       value={tagFilterSelectValue}
       getOptionLabel={(o) =>
         truncateInMiddle(
-          o.label !== undefined && (o.sample === 'tagged' || o.sample === 'predicted')
+          o.label !== undefined && o.sample === 'tagged'
             ? o.label
             : o.sample === 'tagged' && o.user !== undefined
               ? `by ${o.user}`

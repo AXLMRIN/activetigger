@@ -700,9 +700,8 @@ class Project:
         Get next item for a specific scheme with a specific selection method
         - fixed
         - random
-        - active
+        - active (entropy or active LABEL)
         - maxprob
-        - minprob
         - test
 
         history : previous selected elements
@@ -749,13 +748,6 @@ class Project:
             if next.on_users is not None and len(next.on_users) > 0:
                 f_user = df["user"].isin(next.on_users)
                 f = f & f_user
-        elif next.sample == "predicted":
-            if next.model_active is None:
-                raise ValueError("An active model is required for predicted sample")
-            if next.on_labels is not None and len(next.on_labels) > 0:
-                f = proba["prediction"].isin(next.on_labels)
-            else:
-                f = proba["prediction"].notna()
         elif next.sample == "commented":
             f = df["comment"].fillna("").str.len() > 0
         else:
@@ -840,36 +832,50 @@ class Project:
             element_id = ss.sample(n=1).index[0]
 
         # be sure that the model has been trained
-        if next.selection in ["maxprob", "active", "minprob"] and next.model_active is None:
+        if next.selection in ["maxprob", "active"] and next.model_active is None:
             raise Exception("An active model is required for this selection method")
 
-        # class on proba prob for the label_prob, only possible if the model has been trained
-        if next.selection in ["maxprob", "minprob"] and proba is not None:
-            if next.label_prob is None:  # default label to first
-                raise Exception("Label maxprob is required")
-            # use the history to not send already tagged data
-            if next.selection == "maxprob":
-                ascending = False
-            else:
-                ascending = True
+        # maxprob: highest probability for a specific label
+        if next.selection == "maxprob" and proba is not None:
+            if next.label_prob is None:
+                raise Exception("Label is required for maxprob selection")
             ss = (
                 proba[f][next.label_prob]
                 .drop(next.history, errors="ignore")
-                .sort_values(ascending=ascending)
-            )  # get max proba id
+                .sort_values(ascending=False)
+            )
             element_id = ss.index[0]
             n_sample = f.sum()
             indicator = f"probability: {round(proba.loc[element_id, next.label_prob], 2)}"
 
-        # higher entropy, only possible if the model has been trained
+        # active: two modes depending on whether label_prob is set
         if next.selection == "active" and proba is not None:
-            ss_active = (
-                proba[f]["entropy"].drop(next.history, errors="ignore").sort_values(ascending=False)
-            )  # get max entropy id
-            element_id = ss_active.index[0]
-            n_sample = f.sum()
-            indicator = round(proba.loc[element_id, "entropy"], 2)
-            indicator = f"entropy: {indicator}"
+            if next.label_prob is not None:
+                # active LABEL: filter to texts predicted as label, sort by ascending prob
+                f_predicted = proba["prediction"] == next.label_prob
+                f_active = f & f_predicted
+                if f_active.sum() == 0:
+                    raise ValueError(
+                        f"No element predicted as '{next.label_prob}' available."
+                    )
+                ss_active = (
+                    proba[f_active][next.label_prob]
+                    .drop(next.history, errors="ignore")
+                    .sort_values(ascending=True)
+                )
+                element_id = ss_active.index[0]
+                n_sample = f_active.sum()
+                indicator = f"probability: {round(proba.loc[element_id, next.label_prob], 2)}"
+            else:
+                # active (no label): higher entropy (uncertainty sampling)
+                ss_active = (
+                    proba[f]["entropy"]
+                    .drop(next.history, errors="ignore")
+                    .sort_values(ascending=False)
+                )
+                element_id = ss_active.index[0]
+                n_sample = f.sum()
+                indicator = f"entropy: {round(proba.loc[element_id, 'entropy'], 2)}"
 
         if (
             next.model_active is not None
@@ -1166,8 +1172,8 @@ class Project:
             params=self.params,
             next=NextProjectStateModel(
                 methods_min=["fixed", "random"],
-                methods=["fixed", "random", "maxprob", "active", "minprob"],
-                sample=["untagged", "all", "tagged", "predicted", "not_by_me", "commented"],
+                methods=["fixed", "random", "maxprob", "active"],
+                sample=["untagged", "all", "tagged", "not_by_me", "commented"],
             ),
             schemes=self.schemes.state(),
             features=self.features.state(),

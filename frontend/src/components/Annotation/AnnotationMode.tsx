@@ -106,7 +106,7 @@ export const AnnotationModeForm: FC<AnnotationModeFormProps> = ({
     useMemo(() => {
       const modes = (
         (phase === 'train' && activeModel
-          ? project?.next.methods.filter((m) => m !== 'maxprob' && m !== 'minprob')
+          ? project?.next.methods.filter((m) => m !== 'maxprob')
           : project?.next.methods_min) || []
       ).map((mode) => ({ mode, label_prob: undefined }));
       const probLabels =
@@ -119,7 +119,7 @@ export const AnnotationModeForm: FC<AnnotationModeFormProps> = ({
                   label_prob: l,
                 },
                 {
-                  mode: 'minprob',
+                  mode: 'active',
                   label_prob: l,
                 },
               ])
@@ -201,8 +201,8 @@ export const AnnotationModeForm: FC<AnnotationModeFormProps> = ({
             getOptionLabel={(o) =>
               o.mode === 'maxprob' && o.label_prob
                 ? `max pred ${o.label_prob}`
-                : o.mode === 'minprob' && o.label_prob
-                  ? `min pred ${o.label_prob}`
+                : o.mode === 'active' && o.label_prob
+                  ? `active ${o.label_prob}`
                   : o.mode
             }
             onChange={(option) => {
