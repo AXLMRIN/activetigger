@@ -29,6 +29,7 @@ export const CreateNewFeature: FC<CreateNewFeatureProps> = ({
   callback,
 }) => {
   const { projectName } = useParams();
+  const defaultName = getRandomName('feature');
 
   // API calls
   const addFeature = useAddFeature();
@@ -44,7 +45,7 @@ export const CreateNewFeature: FC<CreateNewFeatureProps> = ({
         max_length_tokens: 1024,
       },
       type: 'sentence-embeddings',
-      name: getRandomName('feature'),
+      name: defaultName,
     },
   });
 
@@ -60,6 +61,7 @@ export const CreateNewFeature: FC<CreateNewFeatureProps> = ({
         projectName || null,
         formData.type,
         formData.name,
+        defaultName === formData.name,
         formData.parameters as unknown as Record<string, string | number | undefined>,
       );
     } catch (error) {

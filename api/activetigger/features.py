@@ -353,7 +353,51 @@ class Features:
             if e.kind == "feature"
         }
 
-    def compute(self, df: pd.Series, name: str, kind: str, parameters: dict, username: str):
+    def __sbert_choose_model(self, parameters : dict):
+        if (
+            "model" not in parameters
+            or parameters["model"] is None
+            or parameters["model"] == "generic"
+        ):
+            return self.options["sentence-embeddings"]["default"]
+        else:
+            return parameters["model"]
+
+    def __create_pretty_name(self, kind: str, name: str, use_default_name : bool, parameters : dict) -> str:
+        pretty_name = f"{kind}_{name}"
+        if kind == "sentence-embeddings":
+            if use_default_name: 
+                # use the model name 
+                model_name = self.__sbert_choose_model(parameters)
+                pretty_name = f"SBERT_{model_name.split('/')[-1]}"
+            else: 
+                pretty_name = f"SBERT_{name}"
+
+            if "max_length_tokens" in parameters: 
+                pretty_name += f"-{int(parameters['max_length_tokens'])}tok"
+
+        elif kind == "regex" and use_default_name and "value" in parameters:
+            pretty_name = f"regex_{parameters['value']}" 
+        elif (
+            kind == "dataset" and 
+            "dataset_col" in parameters and 
+            "dataset_type" in parameters and 
+            use_default_name
+        ): 
+            pretty_name = f"{parameters['dataset_col']}_{parameters['dataset_type'].lower()}"
+        elif kind == "fasttext":
+            if parameters["model"] is not None and parameters["model"] != "":
+                short_model = (
+                    parameters["model"].split("/")[-1]
+                    if "/" in parameters["model"]
+                    else parameters["model"]
+                )
+                name = f"fasttext_{name}_{short_model}"
+        elif kind == "dfm":
+            pass
+        return pretty_name
+
+    def compute(self, df: pd.Series, name: str, use_default_name : bool,  kind: str, parameters: dict, username: str):
         """
         Compute new feature
         TODO : the parameters management is really bad
@@ -364,7 +408,7 @@ class Features:
         if kind not in {"sentence-embeddings", "fasttext", "dfm", "regex", "dataset"}:
             raise ValueError("Kind not recognized")
 
-        name = f"{kind}_{name}"
+        name = self.__create_pretty_name(kind, name, use_default_name, parameters)
         if self.exists(name):
             raise ValueError("This regex name already exists")
 
@@ -389,8 +433,6 @@ class Features:
             return None
 
         if kind == "dataset":
-            # force the name
-            name = f"{parameters['dataset_col']}_{parameters['dataset_type'].lower()}_{name.replace('Feature-', '')}"
             # get the raw column for the train set
             column = self.get_column_raw(parameters["dataset_col"])
 
@@ -399,7 +441,7 @@ class Features:
                 raise ValueError("Column contains null values")
             if parameters["dataset_type"] == "Numeric":
                 try:
-                    column = column.apply(float)
+                    column_encoded = column.apply(float)
                 except Exception:
                     raise Exception("The column can't be transform into numerical feature")
             else:
@@ -423,14 +465,8 @@ class Features:
         unique_id = None
 
         if kind == "sentence-embeddings":
-            if (
-                "model" not in parameters
-                or parameters["model"] is None
-                or parameters["model"] == "generic"
-            ):
-                model = self.options["sentence-embeddings"]["default"]
-            else:
-                model = parameters["model"]
+            model = self.__sbert_choose_model(parameters)
+
             if "max_length_tokens" not in parameters:
                 parameters["max_length_tokens"] = 1024
             unique_id = self.queue.add_task(
@@ -444,9 +480,7 @@ class Features:
                 ),
                 queue="gpu",
             )
-            # append short model name (without provider prefix)
-            short_model = model.split("/")[-1] if "/" in model else model
-            name = f"{name}_{short_model}"
+            
             parameters = {
                 "model": model,
                 "name": name,
@@ -467,13 +501,7 @@ class Features:
                     model=parameters["model"],
                 ),
             )
-            if parameters["model"] is not None and parameters["model"] != "":
-                short_model = (
-                    parameters["model"].split("/")[-1]
-                    if "/" in parameters["model"]
-                    else parameters["model"]
-                )
-                name = f"{name}_{short_model}"
+            
             parameters = {
                 "model": parameters["model"],
                 "name": name,
@@ -498,7 +526,7 @@ class Features:
                 "dfm_norm": parameters.get("dfm_norm", None),
                 "dfm_log": parameters.get("dfm_log", None),
             }
-
+        
         if unique_id:
             self.computing.append(
                 FeatureComputing(

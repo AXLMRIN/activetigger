@@ -541,6 +541,7 @@ export function useAddFeature() {
       projectSlug: string | null,
       featureType: string,
       featureName: string,
+      featureUseDefaultName: boolean,
       featureParameters: Record<string, string | number | undefined> | null,
     ) => {
       if (!featureName) featureName = featureType;
@@ -550,7 +551,12 @@ export function useAddFeature() {
           params: {
             query: { project_slug: projectSlug },
           },
-          body: { name: featureName, type: featureType, parameters: featureParameters },
+          body: {
+            name: featureName,
+            type: featureType,
+            parameters: featureParameters,
+            use_default_name: featureUseDefaultName,
+          },
         });
         if (!res.error) notify({ type: 'info', message: 'Features are computing.' });
         return true;
