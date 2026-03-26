@@ -57,7 +57,7 @@ export const TextSpanPanel: FC<SpanInputProps> = ({
   }));
 
   return (
-    <div>
+    <>
       <div className="annotation-frame" style={{ height: `${displayConfig.textFrameHeight}vh` }}>
         <motion.div
           animate={elementId ? { backgroundColor: ['#e8e9ff', '#f9f9f9'] } : {}}
@@ -116,6 +116,6 @@ export const TextSpanPanel: FC<SpanInputProps> = ({
           />
         </div>
       </div>
-    </div>
+    </>
   );
 };
