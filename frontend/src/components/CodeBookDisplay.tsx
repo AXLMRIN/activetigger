@@ -85,7 +85,10 @@ export const CodebookDisplay: FC<CodebookDisplayProps> = ({
           {canEdit && (
             <div id="edit-buttons-group" role="group">
               <button
-                onClick={() => setShowCodebookModal(true)}
+                onClick={() => {
+                  setModifiedCodebook(undefined);
+                  setShowCodebookModal(true);
+                }}
                 title="Edit codebook"
                 className="btn btn-link p-0"
               >
