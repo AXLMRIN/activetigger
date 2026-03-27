@@ -3,6 +3,7 @@ import { FC, PropsWithChildren, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { api } from '../../core/api';
+import { formatApiError } from '../../core/HTTPError';
 import { useNotifications } from '../../core/notifications';
 import { useAuth } from '../../core/useAuth';
 
@@ -49,8 +50,7 @@ export const APIMiddlewares: FC<PropsWithChildren> = ({ children }) => {
             const message = await clonedResponse.json();
             notify({
               type: 'error',
-              message:
-                'detail' in message ? JSON.stringify(message.detail) : JSON.stringify(message),
+              message: formatApiError(message),
             });
 
             // STILL AN ERROR TO FIX TODO

@@ -26,7 +26,7 @@ import {
   newBertModel,
 } from '../types';
 import config from './config';
-import { HttpError } from './HTTPError';
+import { formatApiError, HttpError } from './HTTPError';
 import { useNotifications } from './notifications';
 import { useAppContext } from './useAppContext';
 import { getAsyncMemoData, useAsyncMemo } from './useAsyncMemo';
@@ -115,11 +115,7 @@ export async function login(params: LoginParams) {
 
   if (res.data && !res.error) return res.data;
   else {
-    throw new HttpError(
-      res.response.status,
-      // TODO: debug API type for error, data received are not coherent with types
-      res.error.detail + '',
-    );
+    throw new HttpError(res.response.status, formatApiError(res.error));
   }
 }
 
@@ -193,7 +189,7 @@ export function useUserProjects() {
         storageLimit: res.data.storage_limit as number | null,
       };
     else {
-      notify({ type: 'error', message: JSON.stringify(res.error) });
+      notify({ type: 'error', message: formatApiError(res.error) });
       throw new HttpError(res.response.status, '');
     }
   }, [fetchTrigger]);
@@ -214,7 +210,7 @@ export async function fetchUserProjects(): Promise<AvailableProjectsModel[]> {
   if (res.data && !res.error) {
     return values(res.data.projects) as unknown as AvailableProjectsModel[];
   } else {
-    throw new Error(JSON.stringify(res.error));
+    throw new Error(formatApiError(res.error));
   }
 }
 
@@ -243,12 +239,7 @@ export function useCreateProject() {
       if (!res.error) {
         notify({ type: 'warning', message: 'Project in creation.' });
         return res['data'];
-      } else
-        throw new Error(
-          Array.isArray(res.error.detail)
-            ? res.error.detail.map((d) => d.msg).join('; ')
-            : res.error.detail || res.error.toString(),
-        );
+      } else throw new Error(formatApiError(res.error));
     },
     [notify],
   );
@@ -321,10 +312,7 @@ export function usePredictOnDataset() {
         body: data,
       });
       if (!res.error) notify({ type: 'success', message: 'Start predicting on dataset.' });
-      else
-        throw new Error(
-          res.error.detail ? res.error.detail?.map((d) => d.msg).join('; ') : res.error.toString(),
-        );
+      else throw new Error(formatApiError(res.error));
     },
     [notify],
   );
@@ -411,7 +399,7 @@ export function useProject(projectSlug?: string) {
         },
       });
       if (res.error) {
-        notify({ type: 'error', message: JSON.stringify(res.error) });
+        notify({ type: 'error', message: formatApiError(res.error) });
         return null;
       }
       //return res.data.params;
@@ -1932,7 +1920,7 @@ export async function createGenModel(
     params: { query: { project_slug: project } },
     body: model,
   });
-  if (res.error) throw new Error(res.error.detail?.join() || 'Unable to create model');
+  if (res.error) throw new Error(formatApiError(res.error, 'Unable to create model'));
   else return res.data;
 }
 
@@ -2237,10 +2225,7 @@ export function usePostAnnotationsFile(projectSlug: string | null) {
         body: annotationsset,
       });
       if (!res.error) notify({ type: 'success', message: 'Annotations set uploaded.' });
-      else
-        throw new Error(
-          res.error.detail ? res.error.detail?.map((d) => d.msg).join('; ') : res.error.toString(),
-        );
+      else throw new Error(formatApiError(res.error));
     },
     [notify, projectSlug],
   );
