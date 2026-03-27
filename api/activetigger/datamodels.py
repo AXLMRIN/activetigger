@@ -419,7 +419,7 @@ class FeatureModel(BaseModel):
 
     type: str
     name: str
-    use_default_name: bool
+    use_default_name: bool = True
     parameters: dict[str, str | float]
 
 
