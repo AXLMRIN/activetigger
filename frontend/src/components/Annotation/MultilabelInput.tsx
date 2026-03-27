@@ -2,12 +2,19 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { FaCheck } from 'react-icons/fa6';
 import Select from 'react-select';
 import { ElementOutModel } from '../../types';
+import { useAppContext } from '../../core/useAppContext';
+import { reorderLabels } from '../../core/utils';
 
 interface MultilabelInputProps {
   elementId: string;
   labels: string[];
   postAnnotation: (label: string, elementId: string, comment?: string) => void;
   element?: ElementOutModel;
+}
+
+interface LabelType {
+  id: number;
+  label: string;
 }
 
 // Base hues for level-1 groups, well-spaced on the color wheel
@@ -121,14 +128,28 @@ export const MultilabelInput: FC<MultilabelInputProps> = ({
   labels,
   element,
 }) => {
+  const {
+    appContext: { displayConfig },
+  } = useAppContext();
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
   const [comment, setComment] = useState<string>(
     element?.history ? element.history[0]?.comment || '' : '',
   );
 
   useEffect(() => setComment(element?.history ? element.history[0]?.comment || '' : ''), [element]);
+  const availableLabels = useMemo<LabelType[]>(
+    () =>
+      reorderLabels(labels || [], displayConfig.labelsOrder || []).map((label, index) => ({
+        id: index,
+        label: label,
+      })),
+    [displayConfig.labelsOrder, labels],
+  );
 
-  const { groups, isHierarchical } = useMemo(() => parseLabels(labels), [labels]);
+  const { groups, isHierarchical } = useMemo(
+    () => parseLabels(availableLabels.map((o) => o.label)),
+    [availableLabels],
+  );
 
   const toggleLabel = useCallback((label: string) => {
     setSelectedLabels((prev) =>
