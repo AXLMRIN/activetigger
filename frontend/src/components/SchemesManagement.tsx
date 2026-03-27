@@ -157,6 +157,13 @@ export const SchemesManagement: FC<SchemeManagementProps> = ({
         .split('\n')
         .map((l) => l.trim())
         .filter((l) => l.length > 0);
+      if (new Set(labels).size < labels.length) {
+        notify({
+          type: 'error',
+          message: 'One or more labels appear more than once. Please enter unique labels',
+        });
+        return;
+      }
       await addScheme(formData.name, formData.kind || 'multiclass', labels);
       setInitialLabelsText('');
       if (reFetchCurrentProject) reFetchCurrentProject();

@@ -440,6 +440,8 @@ class Schemes:
         """
         if self.exists(name):
             raise Exception("Scheme already exists")
+        if len(set(labels)) < len(labels):
+            raise Exception(f"Labels need to be unique. Received: {labels}")
         self.projects_service.add_scheme(self.project_slug, name, labels, kind, user)
 
     def add_label(self, label: str, scheme: str, user: str) -> None:
