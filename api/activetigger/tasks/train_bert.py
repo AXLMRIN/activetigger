@@ -59,8 +59,18 @@ class CustomLoggingCallback(TrainerCallback):
         progress_percentage = (state.global_step / state.max_steps) * 100
         with open(self.current_path.joinpath("progress_train"), "w") as f:
             f.write(str(progress_percentage))
+        # Normalize training loss: HuggingFace Trainer accumulates raw losses
+        # across forward passes but divides only by optimizer steps, inflating
+        # the logged training loss by gradient_accumulation_steps.
+        gradacc = args.gradient_accumulation_steps
+        adjusted_history = []
+        for entry in state.log_history:
+            if "loss" in entry and "eval_loss" not in entry and gradacc > 1:
+                entry = dict(entry)
+                entry["loss"] = entry["loss"] / gradacc
+            adjusted_history.append(entry)
         with open(self.current_path.joinpath("log_history.txt"), "w") as f:
-            json.dump(state.log_history, f)
+            json.dump(adjusted_history, f)
         # end if event set
         if self.event is not None:
             if self.event.is_set():
