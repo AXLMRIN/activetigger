@@ -63,7 +63,7 @@ export const UsersPage: FC = () => {
 
   const projectOptions = (projects || []).map((project) => ({
     value: project.parameters.project_slug,
-    label: project.parameters.project_slug,
+    label: project.parameters.project_name,
   }));
 
   const accessToList = authenticatedUser?.username === 'root';
