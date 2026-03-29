@@ -90,7 +90,7 @@ export const AnnotationDisagreementManagement: FC<AnnotationDisagreementManageme
   }, [tableDisagreement, selectedUser]);
 
   // render a single disagreement element
-  const renderElement = (element: (typeof tableDisagreement)[0], index: number) => (
+  const renderElement = (element: NonNullable<typeof tableDisagreement>[0], index: number) => (
     <div className="alert alert-info" role="alert" key={index}>
       <details>
         <summary>
