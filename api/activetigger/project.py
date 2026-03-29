@@ -53,7 +53,13 @@ from activetigger.datamodels import (
 )
 from activetigger.db.manager import DatabaseManager
 from activetigger.features import Features
-from activetigger.functions import clean_regex, get_dir_size, regex_contains, slugify
+from activetigger.functions import (
+    clean_regex,
+    get_dir_size,
+    regex_contains,
+    sanitize_query_expression,
+    slugify,
+)
 from activetigger.generation.generations import Generations
 from activetigger.languagemodels import LanguageModels
 from activetigger.messages import Messages
@@ -786,8 +792,12 @@ class Project:
                     na=False,
                 )
             elif "QUERY=" in filter_san:  # case to use a query
+                query_expr = sanitize_query_expression(
+                    filter_san.replace("QUERY=", ""),
+                    allowed_columns=existing_cols_contexts,
+                )
                 f_regex = cast(
-                    pd.Series, df[existing_cols_contexts].eval(filter_san.replace("QUERY=", ""))
+                    pd.Series, df[existing_cols_contexts].eval(query_expr)
                 )
             else:
                 f_regex = regex_contains(df["text"], filter_san, case=True, na=False)

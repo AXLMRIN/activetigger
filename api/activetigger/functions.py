@@ -181,6 +181,67 @@ def clean_regex(text: str) -> str:
     return text
 
 
+def sanitize_query_expression(expr: str, allowed_columns: list[str]) -> str:
+    """
+    Validate a pandas query expression to prevent code injection via df.eval().
+
+    Only allows simple comparison expressions on known columns:
+      - column operators: ==, !=, >, <, >=, <=
+      - logical connectors: and, or, not
+      - string/numeric literals
+      - parentheses for grouping
+
+    Raises ValueError if the expression contains disallowed tokens.
+    """
+    import re
+    import keyword
+
+    expr = expr.strip()
+    if not expr:
+        raise ValueError("Empty query expression")
+
+    # Tokenize: identifiers, quoted strings, numbers, operators, parens
+    token_pattern = re.compile(
+        r"""
+        "[^"]*"          |  # double-quoted string
+        '[^']*'          |  # single-quoted string
+        [!=<>]=?         |  # comparison operators
+        [()]             |  # parentheses
+        [A-Za-z_]\w*     |  # identifiers
+        -?\d+\.?\d*      |  # numbers
+        \S+                 # anything else (will be rejected)
+        """,
+        re.VERBOSE,
+    )
+    tokens = token_pattern.findall(expr)
+
+    # Reconstruct to make sure we parsed the whole expression
+    if "".join(tokens) != expr.replace(" ", ""):
+        raise ValueError("Query expression contains invalid characters")
+
+    allowed_keywords = {"and", "or", "not", "in", "True", "False", "None"}
+
+    for token in tokens:
+        # Skip string literals, numbers, operators, parens
+        if token.startswith(("'", '"')):
+            continue
+        if re.fullmatch(r"-?\d+\.?\d*", token):
+            continue
+        if token in ("==", "!=", ">", "<", ">=", "<=", "(", ")"):
+            continue
+        if token in allowed_keywords:
+            continue
+        if token in allowed_columns:
+            continue
+        raise ValueError(
+            f"Disallowed token in query expression: '{token}'. "
+            f"Only column names ({', '.join(allowed_columns)}), "
+            f"comparisons, and logical operators are allowed."
+        )
+
+    return expr
+
+
 def regex_contains(
     series: pd.Series, pattern: str, case: bool = True, na: bool = False
 ) -> pd.Series:
