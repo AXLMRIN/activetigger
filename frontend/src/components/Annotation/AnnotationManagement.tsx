@@ -1,4 +1,5 @@
 import { CSSProperties, FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FaBookOpen } from 'react-icons/fa';
 import { HiOutlineEyeOff } from 'react-icons/hi';
 import { LuRefreshCw } from 'react-icons/lu';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -6,11 +7,13 @@ import {
   useAddAnnotation,
   useGetElementById,
   useGetNextElementId,
+  useGetSchemeCodebook,
   useStatistics,
 } from '../../core/api';
 import { useAppContext } from '../../core/useAppContext';
 import { ElementOutModel } from '../../types';
 
+import MDEditor from '@uiw/react-md-editor';
 import classNames from 'classnames';
 import { Modal } from 'react-bootstrap';
 import { useNotifications } from '../../core/notifications';
@@ -60,6 +63,8 @@ export const AnnotationManagement: FC = () => {
 
   const [showDisplayConfig, setShowDisplayConfig] = useState<boolean>(false);
   const [showDisplayViz, setShowDisplayViz] = useState<boolean>(false);
+  const [showCodebook, setShowCodebook] = useState<boolean>(false);
+  const { codebook } = useGetSchemeCodebook(projectName || null, currentScheme || null);
   const [selectFirstModelTrained, setSelectFirstModelTrained] = useState<boolean>(false);
   const [authorizeRetraining, setAuthorizeRetraining] = useState<boolean>(false);
   const handleCloseViz = () => setShowDisplayViz(false);
@@ -367,21 +372,30 @@ export const AnnotationManagement: FC = () => {
         {displayConfig.displayHistory ? (
           <AnnotationHistoryList />
         ) : (
-          <button
-            className="btn btn-link p-0"
-            onClick={() => {
-              setAppContext((prev) => ({
-                ...prev,
-                displayConfig: {
-                  ...displayConfig,
-                  displayHistory: true,
-                },
-              }));
-            }}
-            title="Show history"
-          >
-            <HiOutlineEyeOff size={20} />
-          </button>
+          <div className="d-flex gap-2 align-items-center">
+            <button
+              className="btn btn-link p-0"
+              onClick={() => {
+                setAppContext((prev) => ({
+                  ...prev,
+                  displayConfig: {
+                    ...displayConfig,
+                    displayHistory: true,
+                  },
+                }));
+              }}
+              title="Show history"
+            >
+              <HiOutlineEyeOff size={20} />
+            </button>
+            <button
+              className="btn btn-link p-0"
+              onClick={() => setShowCodebook(true)}
+              title="Show codebook"
+            >
+              <FaBookOpen size={18} />
+            </button>
+          </div>
         )}
       </div>
       {/**
@@ -415,6 +429,17 @@ export const AnnotationManagement: FC = () => {
         </Modal.Header>
         <Modal.Body>
           <TagDisplayParameters />
+        </Modal.Body>
+      </Modal>
+      <Modal show={showCodebook} onHide={() => setShowCodebook(false)} size="xl">
+        <Modal.Header closeButton>
+          <Modal.Title>Codebook</Modal.Title>
+        </Modal.Header>
+        <Modal.Body data-color-mode="light">
+          <MDEditor.Markdown
+            source={codebook || ''}
+            style={{ backgroundColor: 'transparent' }}
+          />
         </Modal.Body>
       </Modal>
     </>

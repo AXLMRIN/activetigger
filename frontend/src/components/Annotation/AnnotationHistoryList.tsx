@@ -1,11 +1,14 @@
+import MDEditor from '@uiw/react-md-editor';
 import classNames from 'classnames';
 import { truncate } from 'lodash';
-import { FC } from 'react';
-import { FaRegTrashAlt } from 'react-icons/fa';
+import { FC, useState } from 'react';
+import { Modal } from 'react-bootstrap';
+import { FaBookOpen, FaRegTrashAlt } from 'react-icons/fa';
 import { HiOutlineEye, HiOutlineViewGrid } from 'react-icons/hi';
 import { HiOutlineTableCells } from 'react-icons/hi2';
 import { Link, useParams } from 'react-router-dom';
 import { Tooltip } from 'react-tooltip';
+import { useGetSchemeCodebook } from '../../core/api';
 import { useAppContext } from '../../core/useAppContext';
 import { useAnnotationSessionHistory } from '../../core/useHistory';
 import { displayTime } from '../../core/utils';
@@ -111,9 +114,14 @@ const AnnotationHistoryTable: FC<{ items: ElementHistoryPoint[] }> = ({ items })
 
 export const AnnotationHistoryList: FC = () => {
   const { appContext, setAppContext } = useAppContext();
-  const { history, phase, currentProject, displayConfig } = appContext;
+  const { history, phase, currentProject, currentScheme, displayConfig } = appContext;
 
   const { clearAnnotationSessionHistory } = useAnnotationSessionHistory();
+  const [showCodebook, setShowCodebook] = useState(false);
+  const { codebook } = useGetSchemeCodebook(
+    currentProject?.params.project_slug || null,
+    currentScheme || null,
+  );
 
   const toggleViewMode = () => {
     setAppContext((prev) => ({
@@ -173,7 +181,25 @@ export const AnnotationHistoryList: FC = () => {
         >
           <HiOutlineEye size={20} />
         </button>
+        <button
+          className="btn btn-link p-0"
+          onClick={() => setShowCodebook(true)}
+          title="Show codebook"
+        >
+          <FaBookOpen size={18} />
+        </button>
       </div>
+      <Modal show={showCodebook} onHide={() => setShowCodebook(false)} size="xl">
+        <Modal.Header closeButton>
+          <Modal.Title>Codebook</Modal.Title>
+        </Modal.Header>
+        <Modal.Body data-color-mode="light">
+          <MDEditor.Markdown
+            source={codebook || ''}
+            style={{ backgroundColor: 'transparent' }}
+          />
+        </Modal.Body>
+      </Modal>
       {displayConfig.displayFormat === 'cards' ? (
         <div className="annotation-history">
           {filteredHistory.map((historyPoint, i) => {
