@@ -82,6 +82,7 @@ export const ProjectPage: FC = () => {
         </div>
       )}
 
+      <div className="mt-4" />
       <LabelsManagement
         projectSlug={projectSlug}
         currentScheme={currentScheme || null}

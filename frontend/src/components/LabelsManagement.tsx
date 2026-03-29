@@ -184,26 +184,6 @@ export const LabelsManagement: FC<LabelsManagementProps> = ({
 
   return (
     <>
-      {canEdit && (
-        <div className="d-flex mt-5" style={{ width: '75vw', maxWidth: '400px' }}>
-          <input
-            type="text"
-            id="new-label"
-            value={createLabelValue}
-            onChange={handleCreateLabelChange}
-            placeholder="Enter new label"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                createLabel();
-              }
-            }}
-          />{' '}
-          <button onClick={createLabel} className="btn btn-link p-0 ms-2">
-            <FaPlusCircle size={25} />
-          </button>
-        </div>
-      )}
       <table id="label-table" className="mt-1">
         <thead>
           <tr>
@@ -267,6 +247,32 @@ export const LabelsManagement: FC<LabelsManagementProps> = ({
           </tr>
         </tbody>
       </table>
+      {canEdit && (
+        <div className="d-flex align-items-center gap-2 mt-2" style={{ maxWidth: '400px' }}>
+          <FaPlusCircle size={16} className="text-muted flex-shrink-0" />
+          <input
+            type="text"
+            id="new-label"
+            value={createLabelValue}
+            onChange={handleCreateLabelChange}
+            placeholder="Add a new label..."
+            style={{ padding: '6px 10px', fontSize: '0.9rem' }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                createLabel();
+              }
+            }}
+          />
+          <button
+            onClick={createLabel}
+            className="btn-primary-action flex-shrink-0"
+            disabled={!createLabelValue.trim()}
+          >
+            Add
+          </button>
+        </div>
+      )}
     </>
   );
 };
