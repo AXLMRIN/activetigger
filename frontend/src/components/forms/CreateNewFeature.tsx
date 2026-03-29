@@ -43,6 +43,7 @@ export const CreateNewFeature: FC<CreateNewFeatureProps> = ({
         dfm_ngrams: 1,
         model: 'generic',
         max_length_tokens: 1024,
+        batch_size: 32,
       },
       type: 'sentence-embeddings',
       name: defaultName,
@@ -110,6 +111,12 @@ export const CreateNewFeature: FC<CreateNewFeatureProps> = ({
             type="number"
             placeholder="Max length tokens"
             {...register('parameters.max_length_tokens')}
+          />
+          <label htmlFor="batch_size">Batch size</label>
+          <input
+            type="number"
+            placeholder="Batch size"
+            {...register('parameters.batch_size')}
           />
         </details>
       )}

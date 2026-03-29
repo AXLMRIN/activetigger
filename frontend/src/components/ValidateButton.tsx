@@ -1,5 +1,5 @@
 import cx from 'classnames';
-import { FC } from 'react';
+import { FC, useState } from 'react';
 import { GrValidate } from 'react-icons/gr';
 
 import { useParams } from 'react-router-dom';
@@ -29,19 +29,34 @@ export const ValidateButtons: FC<validateButtonsProps> = ({
     setAppContext,
   } = useAppContext();
   const { projectName } = useParams();
-  const { computeModelPrediction } = useComputeModelPrediction(projectName || null, 16);
+  const [batchSize, setBatchSize] = useState(16);
+  const { computeModelPrediction } = useComputeModelPrediction(projectName || null, batchSize);
   return (
-    <button
-      className={cx(className ? className : 'btn-primary-action')}
-      style={style ? style : { color: 'white' }}
-      onClick={() => {
-        setAppContext((prev) => ({ ...prev, isComputing: true }));
-        computeModelPrediction(modelName || '', 'annotable', currentScheme || '', kind);
-      }}
-      id={id}
-      disabled={isComputing}
-    >
-      <GrValidate size={20} /> {buttonLabel ? buttonLabel : 'Compute predictions'}
-    </button>
+    <div className="d-flex align-items-center gap-2">
+      <button
+        className={cx(className ? className : 'btn-primary-action')}
+        style={style ? style : { color: 'white' }}
+        onClick={() => {
+          setAppContext((prev) => ({ ...prev, isComputing: true }));
+          computeModelPrediction(modelName || '', 'annotable', currentScheme || '', kind);
+        }}
+        id={id}
+        disabled={isComputing}
+      >
+        <GrValidate size={20} /> {buttonLabel ? buttonLabel : 'Compute predictions'}
+      </button>
+      <label className="batch-size-label">
+        batch
+        <input
+          type="number"
+          min={1}
+          max={512}
+          value={batchSize}
+          onChange={(e) => setBatchSize(Math.max(1, parseInt(e.target.value) || 1))}
+          title="Batch size for prediction"
+          disabled={isComputing}
+        />
+      </label>
+    </div>
   );
 };

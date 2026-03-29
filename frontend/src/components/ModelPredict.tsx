@@ -6,13 +6,10 @@ import { useAppContext } from '../core/useAppContext';
 import { DisplayTrainingProcesses } from './DisplayTrainingProcesses';
 import { ImportPredictionDataset } from './forms/ImportPredictionDataset';
 
-export const ModelPredict: FC<{ currentModel: string | null; batchSize?: number }> = ({
-  currentModel,
-  batchSize,
-}) => {
+export const ModelPredict: FC<{ currentModel: string | null }> = ({ currentModel }) => {
   const { projectName: projectSlug } = useParams();
 
-  const useBatchSize = batchSize || 32;
+  const [batchSize, setBatchSize] = useState<number>(32);
 
   const {
     appContext: { currentScheme, currentProject: project, isComputing },
@@ -26,16 +23,8 @@ export const ModelPredict: FC<{ currentModel: string | null; batchSize?: number 
     isComputing,
   );
 
-  // const availablePrediction =
-  //   currentScheme &&
-  //   currentModel &&
-  //   project?.languagemodels.available[currentScheme] &&
-  //   project?.languagemodels.available[currentScheme][currentModel]
-  //     ? project?.languagemodels.available[currentScheme][currentModel]['predicted']
-  //     : false;
-
-  // compute model preduction
-  const { computeModelPrediction } = useComputeModelPrediction(projectSlug || null, useBatchSize);
+  // compute model prediction
+  const { computeModelPrediction } = useComputeModelPrediction(projectSlug || null, batchSize);
 
   // display external form
   const [displayExternalForm, setDisplayExternalForm] = useState<boolean>(false);
@@ -49,12 +38,11 @@ export const ModelPredict: FC<{ currentModel: string | null; batchSize?: number 
 
   return (
     <div>
-      <div className="horizontal">
+      <div className="horizontal align-items-center">
         {model && (
           <button
             className="btn-primary-action mt-4"
             onClick={() => {
-              console.log('clickedd');
               setDisplayExternalForm(true);
             }}
             disabled={isComputing}
@@ -73,6 +61,20 @@ export const ModelPredict: FC<{ currentModel: string | null; batchSize?: number 
           >
             Prediction complete dataset
           </button>
+        )}
+        {model && (
+          <label className="batch-size-label mt-4">
+            batch
+            <input
+              type="number"
+              min={1}
+              max={512}
+              value={batchSize}
+              onChange={(e) => setBatchSize(Math.max(1, parseInt(e.target.value) || 1))}
+              title="Batch size for prediction"
+              disabled={isComputing}
+            />
+          </label>
         )}
       </div>
       <div>

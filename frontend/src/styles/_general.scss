@@ -50,6 +50,24 @@ input::placeholder {
   font-style: italic;
 }
 
+.batch-size-label {
+  font-size: 0.75rem;
+  color: #888;
+  font-weight: normal;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+
+  input {
+    width: 55px;
+    height: 24px;
+    font-size: 0.75rem;
+    color: #666;
+    padding: 2px 4px;
+  }
+}
+
 table {
   margin: 10px 0px;
 }

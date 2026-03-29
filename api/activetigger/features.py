@@ -469,6 +469,8 @@ class Features:
 
             if "max_length_tokens" not in parameters:
                 parameters["max_length_tokens"] = 1024
+            if "batch_size" not in parameters:
+                parameters["batch_size"] = 32
             unique_id = self.queue.add_task(
                 "feature",
                 self.project_slug,
@@ -477,6 +479,7 @@ class Features:
                     path_process=self.path_all.parent,
                     model=model,
                     max_tokens=parameters["max_length_tokens"],
+                    batch_size=int(parameters["batch_size"]),
                 ),
                 queue="gpu",
             )

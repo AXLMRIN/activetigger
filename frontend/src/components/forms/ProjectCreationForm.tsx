@@ -75,6 +75,7 @@ export const ProjectCreationForm: FC = () => {
   const [dataset, setDataset] = useState<string | null>(null); // state for the data
   const [data, setData] = useState<DataType | null>(null); // state for the data
   const [computeFeatures, setComputeFeatures] = useState<boolean>(true);
+  const [featureBatchSize, setFeatureBatchSize] = useState<number>(32);
   const navigate = useNavigate(); // rooting
   const createProject = useCreateProject(); // API call
   const availableProjectName = useProjectNameAvailable(); // check if the project name is available
@@ -262,6 +263,7 @@ export const ProjectCreationForm: FC = () => {
               if (computeFeatures)
                 addFeature(slug, 'sentence-embeddings', 'default', true, {
                   model: 'generic',
+                  batch_size: featureBatchSize,
                 });
               resetContext();
               navigate(`/projects/${slug}?fromCreatePage=true`);
@@ -705,18 +707,36 @@ export const ProjectCreationForm: FC = () => {
                   />
                   <label htmlFor="clear_test">Drop annotations for the testset </label>
                 </div>
-                <label htmlFor="clear_test">
-                  <input
-                    id="compute_feature"
-                    type="checkbox"
-                    disabled={creatingProject}
-                    checked={computeFeatures}
-                    onChange={() => {
-                      setComputeFeatures(!computeFeatures);
-                    }}
-                  />
-                  Compute sentence embeddings
-                </label>
+                <div className="d-flex align-items-center gap-2">
+                  <label htmlFor="compute_feature" className="m-0">
+                    <input
+                      id="compute_feature"
+                      type="checkbox"
+                      disabled={creatingProject}
+                      checked={computeFeatures}
+                      onChange={() => {
+                        setComputeFeatures(!computeFeatures);
+                      }}
+                    />
+                    Compute sentence embeddings
+                  </label>
+                  {computeFeatures && (
+                    <label className="batch-size-label">
+                      batch
+                      <input
+                        type="number"
+                        min={1}
+                        max={512}
+                        value={featureBatchSize}
+                        onChange={(e) =>
+                          setFeatureBatchSize(Math.max(1, parseInt(e.target.value) || 1))
+                        }
+                        title="Batch size for embedding computation"
+                        disabled={creatingProject}
+                      />
+                    </label>
+                  )}
+                </div>
                 <label htmlFor="n_valid" className="d-flex align-items-center">
                   Seed
                   <a className="ref_seed">
