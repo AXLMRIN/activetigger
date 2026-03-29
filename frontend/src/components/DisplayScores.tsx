@@ -111,20 +111,23 @@ export const DisplayScores: FC<DisplayScoresProps> = ({
       <span className="fs-5">
         Macro F1 score on {dataset.replace('_scores', '')} set : <b>{scores.f1_macro}</b>
       </span>
-      <button
-        className="btn btn-link p-0"
-        onClick={() => {
-          setViewTable(!viewTable);
-        }}
-        title="Toggle view"
-      >
-        <HiOutlineViewGrid size={20} />
-      </button>
+
       {viewTable ? (
         <DisplayTableStatistics scores={scores} title={title} />
       ) : (
         <DisplayTableStatisticsReact scores={scores} title={title} />
       )}
+      <div>
+        <button
+          className="btn btn-link p-0"
+          onClick={() => {
+            setViewTable(!viewTable);
+          }}
+          title="Toggle view"
+        >
+          <HiOutlineViewGrid size={20} />
+        </button>
+      </div>
       {scores['false_predictions'] && (
         <button className="btn-secondary-action" onClick={() => setShowFalsePredictions(true)}>
           Show false predictions
