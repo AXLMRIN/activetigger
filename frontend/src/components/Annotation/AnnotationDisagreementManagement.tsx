@@ -1,8 +1,9 @@
-import { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import Select from 'react-select';
 
 import { useReconciliate, useTableDisagreement } from '../../core/api';
 import { useAppContext } from '../../core/useAppContext';
+import { ModelParametersTab } from '../ModelParametersTab';
 
 /*
  * Manage disagreement in annotations
@@ -32,7 +33,7 @@ export const AnnotationDisagreementManagement: FC<AnnotationDisagreementManageme
   const availableLabels = currentScheme ? project?.schemes?.available?.[currentScheme]?.labels : [];
 
   // get disagreement table
-  const { tableDisagreement, users, reFetchTable } = useTableDisagreement(
+  const { tableDisagreement, users, agreementStats, reFetchTable } = useTableDisagreement(
     projectSlug,
     currentScheme,
     dataset,
@@ -46,6 +47,9 @@ export const AnnotationDisagreementManagement: FC<AnnotationDisagreementManageme
 
   // state elements to validate
   const [changes, setChanges] = useState<{ [key: string]: string }>({});
+
+  // selected user for filtering
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
   // notify parent when dirty state changes
   useEffect(() => {
@@ -61,8 +65,120 @@ export const AnnotationDisagreementManagement: FC<AnnotationDisagreementManageme
     reFetchTable();
   };
 
+  // filter and group disagreements by selected user's label
+  const groupedDisagreements = useMemo(() => {
+    if (!tableDisagreement) return null;
+    if (!selectedUser) return { '': tableDisagreement };
+
+    // filter to elements annotated by selected user (excluding no-label placeholder)
+    const filtered = tableDisagreement.filter((element) => {
+      const annotations = element.annotations as Record<string, string | null> | undefined;
+      if (!annotations) return false;
+      const userLabel = annotations[selectedUser];
+      return userLabel && userLabel !== '-----';
+    });
+
+    // group by the selected user's label
+    const groups: Record<string, typeof filtered> = {};
+    for (const element of filtered) {
+      const annotations = element.annotations as Record<string, string>;
+      const userLabel = annotations[selectedUser];
+      if (!groups[userLabel]) groups[userLabel] = [];
+      groups[userLabel].push(element);
+    }
+    return groups;
+  }, [tableDisagreement, selectedUser]);
+
+  // render a single disagreement element
+  const renderElement = (element: (typeof tableDisagreement)[0], index: number) => (
+    <div className="alert alert-info" role="alert" key={index}>
+      <details>
+        <summary>
+          <span className="badge">
+            {element.id as string} - {element.current_label as string}
+          </span>
+        </summary>
+        <span>{element.text as string}</span>
+      </details>
+
+      {element.annotations && (
+        <div className="horizontal wrap">
+          {/* show selected user's annotation first */}
+          {selectedUser && (element.annotations as Record<string, string>)[selectedUser] && (
+            <div>
+              <span className="badge info">
+                {selectedUser}
+                <span className="badge hotkey">
+                  {(element.annotations as Record<string, string>)[selectedUser]}
+                </span>
+              </span>
+            </div>
+          )}
+          {Object.entries(element.annotations as Record<string, string>)
+            .filter(([key]) => key !== selectedUser)
+            .map(([key, value]) => (
+              <div key={key}>
+                <span className="badge info">
+                  {key}
+                  <span className="badge hotkey">{value}</span>
+                </span>
+              </div>
+            ))}
+
+          {kindScheme === 'multiclass' && (
+            <select
+              style={{ flex: '1 0 200px' }}
+              onChange={(event) =>
+                setChanges({ ...changes, [element.id as string]: event.target.value })
+              }
+            >
+              <option>Arbitation</option>
+              {(availableLabels || []).map((e) => (
+                <option key={e}>{e}</option>
+              ))}
+            </select>
+          )}
+          {kindScheme === 'multilabel' && (
+            <Select
+              isMulti
+              options={(availableLabels || []).map((e) => ({ value: e, label: e }))}
+              onChange={(e) => {
+                setChanges({
+                  ...changes,
+                  [element.id as string]: e.map((e) => e.value).join('|'),
+                });
+              }}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <>
+      {agreementStats && agreementStats.n_total > 0 && (
+        <div className="horizontal center">
+          <ModelParametersTab
+            sortKeys={false}
+            params={
+              {
+                'Annotated by 2+ users': agreementStats.n_total,
+                Agreements: agreementStats.n_agreements,
+                Disagreements: agreementStats.n_disagreements,
+                'Agreement (%)':
+                  agreementStats.agreement_percentage !== null
+                    ? (agreementStats.agreement_percentage * 100).toFixed(2)
+                    : null,
+                "Cohen's Kappa":
+                  agreementStats.cohen_kappa !== null
+                    ? agreementStats.cohen_kappa.toFixed(2)
+                    : null,
+              } as unknown as Record<string, unknown>
+            }
+          />
+        </div>
+      )}
       <div className="explanations">
         Disagreements between users on annotations. Abitrate for the correct label.
       </div>
@@ -70,63 +186,35 @@ export const AnnotationDisagreementManagement: FC<AnnotationDisagreementManageme
       <div>
         <b>{tableDisagreement?.length} disagreements</b>
       </div>
+
+      <div style={{ maxWidth: '300px', marginTop: '10px', marginBottom: '10px' }}>
+        <label>Filter by user (ordered by label)</label>
+        <Select
+          options={(users || []).map((u) => ({ value: u, label: u }))}
+          value={selectedUser ? { value: selectedUser, label: selectedUser } : null}
+          onChange={(option) => setSelectedUser(option ? option.value : null)}
+          isClearable
+          placeholder="All users"
+        />
+      </div>
+
       {Object.entries(changes).length > 0 && (
         <button className="btn btn-warning my-3" onClick={validateChanges}>
           Validate changes
         </button>
       )}
 
-      {tableDisagreement?.map((element, index) => (
-        <div className="alert alert-info" role="alert" key={index}>
-          <details>
-            <summary>
-              <span className="badge">
-                {element.id as string} - {element.current_label as string}
-              </span>
-            </summary>
-            <span>{element.text as string}</span>
-          </details>
-
-          {element.annotations && (
-            <div className="horizontal wrap">
-              {Object.entries(element.annotations).map(([key, value], _) => (
-                <div key={key}>
-                  <span className="badge info">
-                    {key}
-                    <span className="badge hotkey">{value}</span>
-                  </span>
-                </div>
-              ))}
-
-              {kindScheme === 'multiclass' && (
-                <select
-                  style={{ flex: '1 0 200px' }}
-                  onChange={(event) =>
-                    setChanges({ ...changes, [element.id as string]: event.target.value })
-                  }
-                >
-                  <option>Arbitation</option>
-                  {(availableLabels || []).map((e) => (
-                    <option key={e}>{e}</option>
-                  ))}
-                </select>
-              )}
-              {kindScheme === 'multilabel' && (
-                <Select
-                  isMulti
-                  options={(availableLabels || []).map((e) => ({ value: e, label: e }))}
-                  onChange={(e) => {
-                    setChanges({
-                      ...changes,
-                      [element.id as string]: e.map((e) => e.value).join('|'),
-                    });
-                  }}
-                />
-              )}
-            </div>
-          )}
-        </div>
-      ))}
+      {groupedDisagreements &&
+        Object.entries(groupedDisagreements).map(([label, elements]) => (
+          <div key={label}>
+            {label && (
+              <h6 style={{ marginTop: '15px' }}>
+                <span className="badge">{label}</span> ({elements.length})
+              </h6>
+            )}
+            {elements.map((element, index) => renderElement(element, index))}
+          </div>
+        ))}
     </>
   );
 };

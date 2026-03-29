@@ -1841,6 +1841,15 @@ export function useTableDisagreement(project_slug?: string, scheme?: string, dat
   return {
     tableDisagreement: data ? data.table : null,
     users: data ? data.users : null,
+    agreementStats: data
+      ? {
+          n_total: data.n_total,
+          n_agreements: data.n_agreements,
+          n_disagreements: data.n_disagreements,
+          agreement_percentage: data.agreement_percentage,
+          cohen_kappa: data.cohen_kappa,
+        }
+      : null,
     reFetchTable: reFetch,
   };
 }

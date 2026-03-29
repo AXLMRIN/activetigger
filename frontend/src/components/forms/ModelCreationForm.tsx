@@ -73,8 +73,8 @@ export const ModelCreationForm: FC<ModelCreationFormProps> = ({
     max_length: 512,
     auto_max_length: false,
     parameters: {
-      batchsize: 4,
-      gradacc: 4.0,
+      batchsize: 16,
+      gradacc: 1.0,
       epochs: 3,
       lrate: 3e-5,
       wdecay: 0.01,

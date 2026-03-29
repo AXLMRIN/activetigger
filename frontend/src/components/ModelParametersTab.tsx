@@ -44,26 +44,29 @@ import { FC } from 'react';
 
 interface ModelParametersTabProps {
   params: Record<string, unknown>;
+  sortKeys?: boolean;
 }
 
-export const ModelParametersTab: FC<ModelParametersTabProps> = ({ params }) => {
+export const ModelParametersTab: FC<ModelParametersTabProps> = ({ params, sortKeys = true }) => {
+  const entries = Object.entries(params || {});
+  if (sortKeys) {
+    entries.sort(([keyA], [keyB]) => {
+      if (keyA === 'base_model') return -1;
+      if (keyB === 'base_model') return 1;
+      return keyA.localeCompare(keyB);
+    });
+  }
   return (
     <table id="parameter-tables-thin">
       <tbody>
-        {Object.entries(params || {})
-          .sort(([keyA], [keyB]) => {
-            if (keyA === 'base_model') return -1;
-            if (keyB === 'base_model') return 1;
-            return keyA.localeCompare(keyB);
-          })
-          .map(([key, value], index) => (
-            <tr key={key} className={index % 2 === 0 ? 'dark' : ''}>
-              <td>
-                <code>{key}</code>
-              </td>
-              <td>{renderValue(value)}</td>
-            </tr>
-          ))}
+        {entries.map(([key, value], index) => (
+          <tr key={key} className={index % 2 === 0 ? 'dark' : ''}>
+            <td>
+              <code>{key}</code>
+            </td>
+            <td>{renderValue(value)}</td>
+          </tr>
+        ))}
       </tbody>
     </table>
   );

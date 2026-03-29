@@ -201,7 +201,7 @@ class Schemes:
 
     def get_reconciliation_table(
         self, scheme: str, dataset: str = "train", no_label: str = "-----"
-    ) -> tuple[DataFrame, list[str]]:
+    ) -> tuple[DataFrame, list[str], dict]:
         """
         Get reconciliation table
         TODO : manage different dataset
@@ -227,10 +227,14 @@ class Schemes:
         df = df.pivot_table(
             index="id", columns="user", values="labels", aggfunc=agg
         )  # pivot and keep the label
+
+        # compute agreement metrics on elements annotated by 2+ users
+        users = list(df.columns)
+        agreement_stats = self._compute_agreement_stats(df, users)
+
         f_multi = df.apply(
             lambda x: len(set([i for i in x if pd.notna(i)])) > 1, axis=1
         )  # filter for disagreement
-        users = list(df.columns)
         df = pd.DataFrame(
             df.apply(lambda x: x.fillna(no_label).to_dict(), axis=1), columns=["annotations"]
         )
@@ -250,7 +254,59 @@ class Schemes:
         df = df[f_multi].reset_index()
 
         # return the result
-        return df, users
+        return df, users, agreement_stats
+
+    def _compute_agreement_stats(self, pivot_df: DataFrame, users: list[str]) -> dict:
+        """
+        Compute agreement metrics from a pivot table of user annotations.
+        Only considers elements annotated by at least 2 users.
+        """
+        default = {
+            "n_total": 0,
+            "n_agreements": 0,
+            "n_disagreements": 0,
+            "agreement_percentage": None,
+            "cohen_kappa": None,
+        }
+        if len(users) < 2 or len(pivot_df) == 0:
+            return default
+
+        # keep only rows where at least 2 users have annotated
+        mask = pivot_df.notna().sum(axis=1) >= 2
+        df_multi = pivot_df[mask]
+        n_total = len(df_multi)
+
+        if n_total == 0:
+            return default
+
+        # agreement: all non-null values are the same
+        n_agreements = int(
+            df_multi.apply(lambda x: len(set([i for i in x if pd.notna(i)])) == 1, axis=1).sum()
+        )
+        n_disagreements = n_total - n_agreements
+        agreement_percentage = n_agreements / n_total
+
+        # compute average pairwise Cohen's Kappa
+        kappa_scores = []
+        for i in range(len(users)):
+            for j in range(i + 1, len(users)):
+                pair = df_multi[[users[i], users[j]]].dropna()
+                if len(pair) > 0:
+                    try:
+                        kappa = cohen_kappa_score(pair[users[i]], pair[users[j]])
+                        kappa_scores.append(kappa)
+                    except Exception:
+                        pass
+
+        avg_kappa = sum(kappa_scores) / len(kappa_scores) if kappa_scores else None
+
+        return {
+            "n_total": n_total,
+            "n_agreements": n_agreements,
+            "n_disagreements": n_disagreements,
+            "agreement_percentage": agreement_percentage,
+            "cohen_kappa": avg_kappa,
+        }
 
     def reconciliate_element(self, element: ReconciliateElementInModel, username: str) -> None:
         """

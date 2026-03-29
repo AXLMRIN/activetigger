@@ -3432,6 +3432,25 @@ export interface components {
             }[];
             /** Users */
             users: string[];
+            /**
+             * N Total
+             * @default 0
+             */
+            n_total: number;
+            /**
+             * N Agreements
+             * @default 0
+             */
+            n_agreements: number;
+            /**
+             * N Disagreements
+             * @default 0
+             */
+            n_disagreements: number;
+            /** Agreement Percentage */
+            agreement_percentage: number | null;
+            /** Cohen Kappa */
+            cohen_kappa: number | null;
         };
         /**
          * SchemeModel

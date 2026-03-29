@@ -942,6 +942,11 @@ class ReconciliationModel(BaseModel):
 
     table: list[dict[str, str | dict[str, str | None] | None]]
     users: list[str]
+    n_total: int = 0
+    n_agreements: int = 0
+    n_disagreements: int = 0
+    agreement_percentage: float | None = None
+    cohen_kappa: float | None = None
 
 
 class ReconciliateElementInModel(BaseModel):
