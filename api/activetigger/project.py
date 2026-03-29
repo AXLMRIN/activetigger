@@ -833,12 +833,17 @@ class Project:
         indicator = None
         n_sample = f.sum()  # use len(ss) for adding history
 
+        # validate selection method
+        valid_selections = {"fixed", "random", "maxprob", "active"}
+        if next.selection not in valid_selections:
+            raise ValueError(f"Unknown selection method: '{next.selection}'")
+
         # select an element based on the method
 
         if next.selection == "fixed":  # next row
             element_id = ss.index[0]
 
-        if next.selection == "random":  # random row
+        elif next.selection == "random":  # random row
             element_id = ss.sample(n=1).index[0]
 
         # be sure that the model has been trained
