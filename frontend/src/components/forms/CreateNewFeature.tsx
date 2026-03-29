@@ -113,11 +113,7 @@ export const CreateNewFeature: FC<CreateNewFeatureProps> = ({
             {...register('parameters.max_length_tokens')}
           />
           <label htmlFor="batch_size">Batch size</label>
-          <input
-            type="number"
-            placeholder="Batch size"
-            {...register('parameters.batch_size')}
-          />
+          <input type="number" placeholder="Batch size" {...register('parameters.batch_size')} />
         </details>
       )}
 
