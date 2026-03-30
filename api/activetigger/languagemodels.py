@@ -189,6 +189,8 @@ class LanguageModels:
         col_text: str,
         col_label: str,
         params: LMParametersModel,
+        use_dichotomization:bool,
+        label_for_dichotomization:str|None=None,
         base_model: str = "almanach/camembert-base",
         test_size: float = 0.2,
         num_min_annotations: int = 10,
@@ -246,6 +248,8 @@ class LanguageModels:
                 auto_max_length=auto_max_length,
                 class_balance=class_balance,
                 class_min_freq=class_min_freq,
+                use_dichotomization=use_dichotomization,
+                label_for_dichotomization=label_for_dichotomization
             ),
             queue="gpu",
         )

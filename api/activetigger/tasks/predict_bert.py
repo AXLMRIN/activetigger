@@ -17,7 +17,7 @@ from transformers import (  # type: ignore[import]
 
 from activetigger.data import Data
 from activetigger.datamodels import MLStatisticsModel, ReturnTaskPredictModel, TextDatasetModel
-from activetigger.functions import get_device, get_metrics_multiclass
+from activetigger.functions import get_device, get_metrics_multiclass, dichotomize
 from activetigger.tasks.base_task import BaseTask
 
 
@@ -27,6 +27,7 @@ class PredictBertMultiClass(BaseTask):
     """
 
     kind = "predict_bert"
+    default_max_length = 512
 
     def __init__(
         self,
@@ -81,6 +82,15 @@ class PredictBertMultiClass(BaseTask):
 
         if statistics is not None and col_label is None:
             raise ValueError("Column label must be provided to compute statistics")
+        
+        # read the config file
+        with open(self.path / "parameters.json", "r") as jsonfile:
+            self.model_config = json.load(jsonfile)
+            self.max_length = int(self.model_config.get("max_length", self.default_max_length))
+            if "base_model" in self.model_config:
+                self.modeltype = self.model_config["base_model"]
+            else:
+                raise ValueError("No model type found in config.json. Please check the file.")
 
     def __load_external_file(
         self, path_data: Path, external_dataset: TextDatasetModel | None
@@ -111,26 +121,17 @@ class PredictBertMultiClass(BaseTask):
         with open(self.progress_path, "w") as f:
             f.write(str(progress))
 
-    def __load_model(self, default_max_length: int = 512) -> tuple:
+    def __load_model(self) -> tuple:
         """
         Load the model and tokenizer from the path
         """
-        # read the config file
-        with open(self.path / "parameters.json", "r") as jsonfile:
-            data = json.load(jsonfile)
-            max_length = int(data.get("max_length", default_max_length))
-            if "base_model" in data:
-                modeltype = data["base_model"]
-            else:
-                raise ValueError("No model type found in config.json. Please check the file.")
-
         # load the tokenizer and model
-        tokenizer = AutoTokenizer.from_pretrained(modeltype, trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(self.modeltype, trust_remote_code=True)
         model = AutoModelForSequenceClassification.from_pretrained(
             self.path, trust_remote_code=True
         )
 
-        return tokenizer, model, max_length
+        return tokenizer, model, self.max_length
 
     def __listen_stop_event(self):
         """
@@ -156,16 +157,22 @@ class PredictBertMultiClass(BaseTask):
         pred["entropy"] = entropy
         pred["prediction"] = pred.drop(columns="entropy").idxmax(axis=1)
 
-        # add columns if available
+        # add text in the dataframe to be able to get mismatch
+        pred["text"] = self.df[self.col_text]
+
         if self.col_datasets:
             pred[self.col_datasets] = self.df[self.col_datasets]
         if self.col_id_external:
             pred[self.col_id_external] = self.df[self.col_id_external].astype(str)
         if self.col_label:
-            pred["label"] = self.df[self.col_label]
+            pred["GS-label"] = self.df[self.col_label]
+            if self.model_config.get("use_dichotomization",False):
+                pred["GS-label-non-dichotomized"] = pred["GS-label"].copy()
+                label_for_dichotomization = self.model_config["label_for_dichotomization"]
+                pred, _ = dichotomize(pred, "GS-label", label_for_dichotomization)
         return pred
 
-    def __compute_statistics(self, pred: DataFrame) -> dict[str, MLStatisticsModel]:
+    def __compute_statistics(self, pred: DataFrame, id2label: dict[int,str]) -> dict[str, MLStatisticsModel]:
         """
         Compute statistics for the predictions
         """
@@ -177,9 +184,7 @@ class PredictBertMultiClass(BaseTask):
         # compute statistics
         metrics: dict[str, MLStatisticsModel] = {}
 
-        # add text in the dataframe to be able to get mismatch
-        pred["text"] = self.df[self.col_text]
-        filter_label = pred["label"].notna()  # only non null values
+        filter_label = pred["GS-label"].notna()  # only non null values
 
         # compute the statistics per dataset
         for dataset in self.statistics:
@@ -188,9 +193,10 @@ class PredictBertMultiClass(BaseTask):
             if filter.sum() < 5:
                 continue
             metrics[dataset] = get_metrics_multiclass(
-                pred[filter]["label"],
+                pred[filter]["GS-label"],
                 pred[filter]["prediction"],
                 texts=pred[filter]["text"],
+                id2label=id2label
             )
 
         # add out of sample (labelled data not in training data)
@@ -200,9 +206,10 @@ class PredictBertMultiClass(BaseTask):
         )
         if filter_oos.sum() > 10:
             metrics["outofsample"] = get_metrics_multiclass(
-                pred[filter_oos]["label"],
+                pred[filter_oos]["GS-label"],
                 pred[filter_oos]["prediction"],
                 texts=pred[filter_oos]["text"],
+                id2label=id2label
             )
 
         # write the metrics in a json file
@@ -222,6 +229,7 @@ class PredictBertMultiClass(BaseTask):
 
         # load the model
         tokenizer, model, max_length = self.__load_model()
+        id2label = model.config.id2label
 
         # select device
         device = get_device()
@@ -244,10 +252,7 @@ class PredictBertMultiClass(BaseTask):
                 chunk = chunk.to(device)
                 with torch.no_grad():
                     outputs = model(**chunk)
-                res = outputs[0]
-                if device.type != "cpu":
-                    res = res.cpu()
-                res = res.softmax(1).detach().numpy()
+                res = outputs[0].detach().cpu().softmax(1).numpy()
                 predictions.append(res)
                 self.__write_progress((len(predictions) * self.batch / self.df.shape[0]) * 100)
 
@@ -261,7 +266,7 @@ class PredictBertMultiClass(BaseTask):
 
             # compute statistics if required
             if self.statistics:
-                metrics = self.__compute_statistics(pred)
+                metrics = self.__compute_statistics(pred, id2label)
             else:
                 metrics = None
 

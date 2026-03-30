@@ -792,17 +792,6 @@ class Schemes:
         except DBException as e:
             raise Exception from e
 
-    def dichotomize(self, annotation: str | None, label: str | None) -> str:
-        """
-        check if the label is in the annotation
-        current situation : separator |
-        """
-        if annotation is None:
-            raise Exception("No annotation")
-        if label is None:
-            raise Exception("No label")
-        return label if label in annotation.split("|") else "not-" + label
-
     def add_file_annotations(self, annotationsdata: AnnotationsDataModel, user: str) -> None:
         """
         Add annotations from a file to the trainset

@@ -61,6 +61,7 @@ from activetigger.functions import (
     slugify,
     get_number_occurrences_per_label,
     remove_labels_without_enough_annotations,
+    dichotomize
 )
 from activetigger.generation.generations import Generations
 from activetigger.languagemodels import LanguageModels
@@ -1434,17 +1435,21 @@ class Project:
                             f"(kind: {training_kind})")
 
         # management for multilabels / dichotomize
-        if bert.dichotomize is not None:
-            df["labels"] = df["labels"].apply(
-                lambda x: self.schemes.dichotomize(x, bert.dichotomize)
-            )
+        use_dichotomization = bert.dichotomize is not None and bert.dichotomize != "No dichotomization"
+        if use_dichotomization:
+            df, scheme_labels = dichotomize(df, "labels", bert.dichotomize)
             bert.name = f"{bert.name}_multilabel_on_{bert.dichotomize}"
+            # Force training kind and scheme_labels
+            training_kind = "multiclass"
+            # Sanitize df
+            df = df[df["labels"].notna()]
 
         # remove class under the threshold
         label_counts = get_number_occurrences_per_label(df["labels"], scheme_labels)
-        for label_to_exclude in bert.exclude_labels:
-            # force label counts to -1 to remove them  at the same time
-            label_counts[label_to_exclude] = -1
+        if not use_dichotomization:
+            for label_to_exclude in bert.exclude_labels:
+                # force label counts to -1 to remove them  at the same time
+                label_counts[label_to_exclude] = -1
         df, scheme_labels = remove_labels_without_enough_annotations(
             df, "labels", label_counts, bert.class_min_freq)
         df = df[df["labels"].notna()]
@@ -1474,6 +1479,8 @@ class Project:
             auto_max_length=bert.auto_max_length,
             class_balance=bert.class_balance,
             class_min_freq=bert.class_min_freq,
+            use_dichotomization=use_dichotomization,
+            label_for_dichotomization=bert.dichotomize if use_dichotomization else None
         )
         self.monitoring.register_process(
             process_name=process_id,

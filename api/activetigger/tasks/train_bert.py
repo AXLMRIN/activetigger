@@ -144,11 +144,13 @@ class TrainBertMultiClass(BaseTask):
         df: DataFrame | datasets.Dataset,
         training_kind : str,
         scheme_labels : list[str],
+        use_dichotomization : bool,
         col_text: str,
         col_label: str,
         base_model: str,
         params: LMParametersModel,
         test_size: float,
+        label_for_dichotomization : str|None = None,
         event: Optional[multiprocessing.synchronize.Event] = None,
         unique_id: Optional[str] = None,
         loss: Optional[str] = "cross_entropy",
@@ -172,6 +174,8 @@ class TrainBertMultiClass(BaseTask):
             raise ValueError((f"Labels in your scheme are not unique.\n"
                 f"Labels provided : {scheme_labels}"))
         self.scheme_labels = scheme_labels
+        self.use_dichotomization = use_dichotomization
+        self.label_for_dichotomization = label_for_dichotomization
         self.col_text = col_text
         self.col_label = col_label
         self.base_model = base_model
@@ -236,7 +240,7 @@ class TrainBertMultiClass(BaseTask):
         # formatting data
         # alphabetical order
         labels = sorted(list(df[col_label].dropna().unique()))
-
+        print("LABELS : ", labels)
         if len(labels) < 2:
             raise ValueError(
                 "Not enough classes. Either you excluded classes or there are not enough annotations."
@@ -535,6 +539,9 @@ class TrainBertMultiClass(BaseTask):
             params_to_save.update(
                 {
                     "training-kind" : "multiclass",
+                    "labels": labels,
+                    "use_dichotomization": self.use_dichotomization,
+                    "label_for_dichotomization": self.label_for_dichotomization,
                     "test_size": self.test_size,
                     "base_model": self.base_model,
                     "n_train": len(self.ds["train"]),

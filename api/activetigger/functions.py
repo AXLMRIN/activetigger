@@ -491,3 +491,29 @@ def remove_labels_without_enough_annotations(
 
     df[col_label] = annotations
     return df, scheme_labels
+
+
+def dichotomize(df: pd.DataFrame, label_col : str, label_for_dichotomization: str) -> tuple[pd.DataFrame, list[str]]:
+    """
+    dichotomize labels accordint to the provided label, return the updated label 
+    scheme as well as the dichotomized dataframe
+    """
+
+    annotations = df[label_col].copy()
+
+    def binarize(list_of_annotations : list[str]|pd._libs.missing.NAType
+        )->bool|pd._libs.missing.NAType:
+        if isinstance(list_of_annotations,list):
+            return label_for_dichotomization in list_of_annotations
+        else:
+            return pd.NA
+    annotations = (
+        annotations
+        .apply(split_annotation)
+        .apply(binarize)
+        .replace({True: label_for_dichotomization, False: f"not-{label_for_dichotomization}"})
+    )
+    df[label_col] = annotations
+    new_scheme_labels = [label_for_dichotomization, f"not-{label_for_dichotomization}"] 
+    return df, new_scheme_labels
+    
