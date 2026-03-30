@@ -17,11 +17,11 @@ from transformers import (  # type: ignore[import]
 
 from activetigger.data import Data
 from activetigger.datamodels import MLStatisticsModel, ReturnTaskPredictModel, TextDatasetModel
-from activetigger.functions import get_device, get_metrics
+from activetigger.functions import get_device, get_metrics_multiclass
 from activetigger.tasks.base_task import BaseTask
 
 
-class PredictBert(BaseTask):
+class PredictBertMultiClass(BaseTask):
     """
     Class to predict with a bert model
     """
@@ -187,7 +187,7 @@ class PredictBert(BaseTask):
             filter = filter_label & filter_dataset
             if filter.sum() < 5:
                 continue
-            metrics[dataset] = get_metrics(
+            metrics[dataset] = get_metrics_multiclass(
                 pred[filter]["label"],
                 pred[filter]["prediction"],
                 texts=pred[filter]["text"],
@@ -199,7 +199,7 @@ class PredictBert(BaseTask):
             ~pred.index.isin(index_model) & filter_label & pred[self.col_datasets] == "train"
         )
         if filter_oos.sum() > 10:
-            metrics["outofsample"] = get_metrics(
+            metrics["outofsample"] = get_metrics_multiclass(
                 pred[filter_oos]["label"],
                 pred[filter_oos]["prediction"],
                 texts=pred[filter_oos]["text"],

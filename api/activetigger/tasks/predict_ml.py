@@ -8,11 +8,11 @@ import pandas as pd  # type: ignore[import]
 from sklearn.base import BaseEstimator  # type: ignore[import]
 
 from activetigger.datamodels import MLStatisticsModel
-from activetigger.functions import get_metrics
+from activetigger.functions import get_metrics_multiclass
 from activetigger.tasks.base_task import BaseTask
 
 
-class PredictML(BaseTask):
+class PredictMLMultiClass(BaseTask):
     """
     Predict with a sklearn model
     """
@@ -91,7 +91,7 @@ class PredictML(BaseTask):
                 continue
 
             sub_Y_pred_full = Y_pred_full[filter_dataset]
-            metrics[dataset] = get_metrics(
+            metrics[dataset] = get_metrics_multiclass(
                 sub_Y_pred_full["predicted_label"],
                 sub_Y_pred_full["prediction"],
                 texts=sub_Y_pred_full["text"] if self.col_text else None,
@@ -107,7 +107,7 @@ class PredictML(BaseTask):
         filter_oos = not_in_training & filter_dataset
 
         if filter_oos.sum() > 10:
-            metrics["outofsample"] = get_metrics(
+            metrics["outofsample"] = get_metrics_multiclass(
                 Y_pred_full[filter_oos]["predicted_label"],
                 Y_pred_full[filter_oos]["prediction"],
                 texts=Y_pred_full[filter_oos]["text"] if self.col_text else None,

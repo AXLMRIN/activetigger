@@ -59,6 +59,8 @@ from activetigger.functions import (
     regex_contains,
     sanitize_query_expression,
     slugify,
+    get_number_occurrences_per_label,
+    remove_labels_without_enough_annotations,
 )
 from activetigger.generation.generations import Generations
 from activetigger.languagemodels import LanguageModels
@@ -1423,6 +1425,14 @@ class Project:
         df = self.schemes.get_scheme(bert.scheme, datasets=["train"], complete=True)
         df = df[["text", "labels"]].dropna()
 
+        # Sort multilabel/multiclass
+        scheme = self.schemes.available()[bert.scheme]
+        scheme_labels = scheme.labels
+        training_kind = scheme.kind # "multiclass" or "multilabel"
+        if training_kind not in ["multiclass", "multilabel"]:
+            raise Exception(f"Training does not support this type of scheme "
+                            f"(kind: {training_kind})")
+
         # management for multilabels / dichotomize
         if bert.dichotomize is not None:
             df["labels"] = df["labels"].apply(
@@ -1431,16 +1441,17 @@ class Project:
             bert.name = f"{bert.name}_multilabel_on_{bert.dichotomize}"
 
         # remove class under the threshold
-        label_counts = df["labels"].value_counts()
-        df = df[df["labels"].isin(label_counts[label_counts >= bert.class_min_freq].index)]
-
-        # remove class requested by the user
-        if len(bert.exclude_labels) > 0:
-            df = df[~df["labels"].isin(bert.exclude_labels)]
-            bert.name = f"{bert.name}_exclude_labels_"
+        label_counts = get_number_occurrences_per_label(df["labels"], scheme_labels)
+        for label_to_exclude in bert.exclude_labels:
+            # force label counts to -1 to remove them  at the same time
+            label_counts[label_to_exclude] = -1
+        df, scheme_labels = remove_labels_without_enough_annotations(
+            df, "labels", label_counts, bert.class_min_freq)
+        df = df[df["labels"].notna()]
 
         # balance the dataset based on the min class
-        if bert.class_balance:
+        if bert.class_balance and training_kind == "multiclass":
+            # Specific behaviour for multiclass, balance classes is disabled for multilabels
             min_freq = df["labels"].value_counts().sort_values().min()
             df = df.groupby("labels").sample(n=min_freq)
 
@@ -1451,6 +1462,8 @@ class Project:
             user=username,
             scheme=bert.scheme,
             df=df,
+            training_kind = training_kind, 
+            scheme_labels=scheme_labels,
             col_text=df.columns[0],
             col_label=df.columns[1],
             base_model=bert.base_model,

@@ -9,6 +9,7 @@ from typing import Any, cast
 from urllib.parse import quote
 
 import bcrypt
+import numpy as np
 import pandas as pd  # type: ignore[import]
 import regex
 import spacy
@@ -276,10 +277,10 @@ def decrypt(text: str | None, secret_key: str | None) -> str:
     return decrypted_token.decode()
 
 
-def get_metrics(
+def get_metrics_multiclass(
     Y_true: pd.Series,
     Y_pred: pd.Series,
-    labels: list[str] | None = None,
+    id2label: list[str] | None = None,
     texts: pd.Series | None = None,
     decimals: int = 3,
 ) -> MLStatisticsModel:
@@ -289,8 +290,11 @@ def get_metrics(
     - f1 (weighted macro, micro) and precision micro
     - confusion matrix and table
     """
-    if labels is None:
+    print("Calculating metrics (multiclass)")
+    if id2label is None:
         labels = list(Y_true.unique())
+    else:
+        labels = list(id2label.values())
 
     # Compute scores per label --- --- --- --- --- --- --- --- --- --- --- --- -
     precision_label = precision_score(Y_true, Y_pred, average=None, labels=labels, zero_division=1)
@@ -347,6 +351,7 @@ def get_metrics(
         false_prediction = filter_false_prediction.loc[lambda x: x].index.tolist()
 
     statistics = MLStatisticsModel(
+        training_kind="multiclass",
         f1_label=dict(zip(labels, f1_label)),
         precision_label=dict(zip(labels, precision_label)),
         recall_label=dict(zip(labels, recall_label)),
@@ -420,3 +425,69 @@ def get_model_metrics(path_model: Path) -> dict | None:
         scores = {**scores, **stats}
 
     return scores
+
+def split_annotation(annotation:str) -> list[str]|pd._libs.missing.NAType:
+    """
+    Generalise the annoation splitting for multilabel
+    annotation : label = multiclass  -> return ["label"]
+    annotation : label1|label2 = multilabel -> return ["label1","label2"]
+
+    if annotation is not a string, return NaN
+    """
+    if isinstance(annotation, str):
+        return annotation.split("|")
+    else:
+        return pd.NA
+    
+def rejoin_annotation(list_of_annotations : list[str]) -> str|pd._libs.missing.NAType:
+    """
+    the opposite of split_annotation
+    if list of annotations is not a list of strings, return np.NaN
+    """
+    if isinstance(list_of_annotations, list):
+        if (len(list_of_annotations)>0 and
+            all([isinstance(annotation, str) for annotation in list_of_annotations])        
+        ):
+            return "|".join(list_of_annotations)
+    return pd.NA
+def get_number_occurrences_per_label(annotations: pd.Series, labels: list[str]) -> dict[str:int]:
+    """
+    For all labels in annotations ("labelX" if multiclass, "labelX|labelY" if
+    multilabel) count the number of occurences.
+    """
+    n_occurrences = {}
+    for label in labels:
+        n_occurrences[label] = int(
+            annotations
+            .apply(split_annotation)
+            .apply(lambda list_annotation: label in list_annotation)
+            .sum()
+        )
+    return n_occurrences
+
+def remove_labels_without_enough_annotations(
+        df : pd.DataFrame, 
+        col_label : str,
+        label_counts: list[str], 
+        class_min_freq: int
+    ) -> tuple[pd.DataFrame,list[str]]:
+    """
+    For each row, remove annotations containing classes with not enough labels
+    and remove rows that do not contain annotations
+    """
+    annotations = df[col_label].copy()
+    scheme_labels = []
+    for label in label_counts:
+        if label_counts[label] < class_min_freq:
+            # Each iteration, split the annotations into list of annotations and 
+            # rejoin the annotations without a given label
+            annotations = (
+                annotations
+                .apply(split_annotation)
+                .apply(lambda LoA: rejoin_annotation([A for A in LoA if A != label]))
+            )
+        else:
+            scheme_labels += [label]
+
+    df[col_label] = annotations
+    return df, scheme_labels

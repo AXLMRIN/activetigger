@@ -28,8 +28,8 @@ from activetigger.db.languagemodels import ModelsService
 from activetigger.db.manager import DatabaseManager
 from activetigger.functions import get_model_metrics
 from activetigger.queue_manager import Queue
-from activetigger.tasks.predict_bert import PredictBert
-from activetigger.tasks.train_bert import TrainBert
+from activetigger.tasks.predict_bert import PredictBertMultiClass
+from activetigger.tasks.train_bert import TrainBertMultiClass
 
 
 class LanguageModels:
@@ -184,6 +184,8 @@ class LanguageModels:
         user: str,
         scheme: str,
         df: DataFrame,
+        training_kind : str,
+        scheme_labels: list[str],
         col_text: str,
         col_label: str,
         params: LMParametersModel,
@@ -204,11 +206,6 @@ class LanguageModels:
         # check the size of training data
         if len(df.dropna()) < num_min_annotations:
             raise Exception(f"Less than {num_min_annotations} elements annotated")
-
-        # check the number of elements
-        counts = df[col_label].value_counts()
-        if not (counts >= num_min_annotations_per_label).all():
-            raise Exception(f"Less than {num_min_annotations_per_label} elements per label")
 
         # name integrating the scheme & user + date
         current_date = datetime.now(timezone.utc)
@@ -232,11 +229,13 @@ class LanguageModels:
         unique_id = self.queue.add_task(
             "training",
             project,
-            TrainBert(
+            TrainBertMultiClass(
                 path=self.path,
                 project_slug=project,
                 model_name=model_name,
                 df=df.copy(deep=True),
+                training_kind=training_kind,
+                scheme_labels=scheme_labels,
                 col_label=col_label,
                 col_text=col_text,
                 base_model=base_model,
@@ -263,6 +262,7 @@ class LanguageModels:
                 unique_id=unique_id,
                 time=current_date,
                 kind="train_bert",
+                training_kind=training_kind,
                 status="training",
                 scheme=scheme,
                 dataset=None,
@@ -314,7 +314,7 @@ class LanguageModels:
         unique_id = self.queue.add_task(
             "prediction",
             project_slug,
-            PredictBert(
+            PredictBertMultiClass(
                 path=self.path.joinpath(name),
                 dataset=dataset,
                 df=df,
@@ -338,6 +338,7 @@ class LanguageModels:
                 unique_id=unique_id,
                 time=datetime.now(timezone.utc),
                 kind="predict_bert",
+                training_kind="multiclass", # Force multiclass for now
                 dataset=dataset,
                 status=status,
                 get_progress=self.get_progress(name, status=status),

@@ -529,6 +529,7 @@ class GenerationModelApi(BaseModel):
 
 
 class MLStatisticsModel(BaseModel):
+    training_kind: str | None = None
     f1_label: dict[str, float] | None = None
     precision_label: dict[str, float] | None = None
     recall_label: dict[str, float] | None = None
@@ -587,6 +588,7 @@ class LMComputing(ProcessComputing):
     dataset: Optional[str] = None
     get_progress: Callable[[], float | None] | None = None
     params: dict[str, Any] | None = None
+    training_kind: str
 
 
 class LMComputingOutModel(BaseModel):

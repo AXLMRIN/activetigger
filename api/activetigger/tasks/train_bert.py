@@ -27,7 +27,7 @@ from transformers import (  # type: ignore[import]  # type: ignore[import]
 
 from activetigger.config import config
 from activetigger.datamodels import EventsModel, LMParametersModel, MLStatisticsModel
-from activetigger.functions import get_device, get_metrics
+from activetigger.functions import get_device, get_metrics_multiclass
 from activetigger.monitoring import TaskTimer
 from activetigger.tasks.base_task import BaseTask
 from activetigger.tasks.utils import length_after_tokenizing, retrieve_model_max_length
@@ -113,7 +113,7 @@ class CustomTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
 
 
-class TrainBert(BaseTask):
+class TrainBertMultiClass(BaseTask):
     """
     Class to train a bert model
 
@@ -142,6 +142,8 @@ class TrainBert(BaseTask):
         project_slug: str,
         model_name: str,
         df: DataFrame | datasets.Dataset,
+        training_kind : str,
+        scheme_labels : list[str],
         col_text: str,
         col_label: str,
         base_model: str,
@@ -162,6 +164,14 @@ class TrainBert(BaseTask):
         self.name = model_name
         df.index.name = "id"
         self.df = df
+        if training_kind not in ["multiclass"]:
+            raise ValueError((f"TrainBERTMultiClass only works for multiclass "
+                f"but you set training_kind = {training_kind}"))
+        self.training_kind = training_kind
+        if len(scheme_labels) != len(set(scheme_labels)):
+            raise ValueError((f"Labels in your scheme are not unique.\n"
+                f"Labels provided : {scheme_labels}"))
+        self.scheme_labels = scheme_labels
         self.col_text = col_text
         self.col_label = col_label
         self.base_model = base_model
@@ -202,11 +212,24 @@ class TrainBert(BaseTask):
         if df[col_label].isnull().sum() > 0:
             df = df[df[col_label].notnull()]
             self.logger.info(f"Missing labels - reducing training data to {len(df)}")
+            print(f"Missing labels - reducing training data to {len(df)}")
 
         # test empty texts and remove them
         if df[col_text].isnull().sum() > 0:
             df = df[df[col_text].notnull()]
             self.logger.info(f"Missing texts - reducing training data to {len(df)}")
+            print(f"Missing texts - reducing training data to {len(df)}")
+
+        # Test that all labels in the label column appear in the scheme labels
+        condition = (
+            df[col_label]
+            .apply(lambda annotation : annotation in self.scheme_labels)
+        )
+        if (~condition).sum() > 0:
+            df = df[condition]
+            self.logger.info(f"Labels not recognised - reducing training data to {len(df)}")
+            print(f"Labels not recognised - reducing training data to {len(df)}")
+
         return df
 
     def __retrieve_labels(self, df: pd.DataFrame, col_label):
@@ -257,7 +280,7 @@ class TrainBert(BaseTask):
         max_length = min(original_max_length, base_model_max_length)
         # evaluate the proportion of elements truncated
         percentage_truncated = int(
-            100 * texts.apply(get_n_tokens).dropna().apply(lambda x: x > max_length).mean()
+            100 * (texts.apply(get_n_tokens).dropna() > max_length).mean()
         )
 
         if adapt:
@@ -266,7 +289,7 @@ class TrainBert(BaseTask):
                 truncation=True,
                 padding=True,
                 return_tensors="pt",
-                max_length=int(self.max_length),
+                max_length=int(max_length),
             )
         else:
             tokenizing_function = lambda e: tokenizer(
@@ -274,7 +297,7 @@ class TrainBert(BaseTask):
                 truncation=True,
                 padding="max_length",
                 return_tensors="pt",
-                max_length=self.max_length,
+                max_length=max_length,
             )
         return tokenizing_function, percentage_truncated
 
@@ -296,8 +319,7 @@ class TrainBert(BaseTask):
         )
         warmup_steps = int((total_steps) // 10)
         eval_steps = (total_steps - warmup_steps) // params.eval
-        if eval_steps == 0:
-            eval_steps = 1
+        eval_steps = max(eval_steps, 1)
 
         # Load the training arguments
         training_args = TrainingArguments(
@@ -376,12 +398,16 @@ class TrainBert(BaseTask):
         """
 
         # Save results for the train and test set
-        df_train_results[["true_label", "predicted_label"]].to_csv(
-            current_path.joinpath("train_dataset_eval.csv")
+        (
+            df_train_results
+            [[c for c in df_train_results.columns if c not in ['input_ids', 'attention_mask']]]
+            .to_csv(current_path.joinpath("train_dataset_eval.csv"))
         )
         if df_test_results is not None:
-            df_test_results[["true_label", "predicted_label"]].to_csv(
-                current_path.joinpath("test_dataset_eval.csv")
+            (
+                df_test_results
+                [[c for c in df_test_results.columns if c not in ['input_ids', 'attention_mask']]]
+                .to_csv(current_path.joinpath("test_dataset_eval.csv"))
             )
         training_data.to_parquet(current_path.joinpath("training_data.parquet"))
 
@@ -455,8 +481,8 @@ class TrainBert(BaseTask):
             trust_remote_code=True,
         )
         bert_model.config.use_cache = False
-        self.logger.info("Model loaded")
-        print("Model loaded")
+        self.logger.info(f"Model loaded on {bert_model.device}")
+        print(f"Model loaded on {bert_model.device}")
 
         try:
             trainer = self.__load_trainer(
@@ -479,11 +505,11 @@ class TrainBert(BaseTask):
             df_train_results["predicted_label"] = [
                 id2label[i] for i in np.argmax(predictions_train.predictions, axis=1)
             ]
-            metrics_train = get_metrics(
+            metrics_train = get_metrics_multiclass(
                 Y_true=df_train_results["true_label"],
                 Y_pred=df_train_results["predicted_label"],
                 texts=df_train_results["text"],
-                labels=labels,
+                id2label=id2label,
             )
 
             if "test" in self.ds:
@@ -493,11 +519,11 @@ class TrainBert(BaseTask):
                 df_test_results["predicted_label"] = [
                     id2label[i] for i in np.argmax(predictions_test.predictions, axis=1)
                 ]
-                metrics_test = get_metrics(
+                metrics_test = get_metrics_multiclass(
                     Y_true=df_test_results["true_label"],
                     Y_pred=df_test_results["predicted_label"],
                     texts=df_test_results["text"],
-                    labels=labels,
+                    id2label=id2label,
                 )
             else:
                 df_test_results = None
@@ -508,6 +534,7 @@ class TrainBert(BaseTask):
             params_to_save = self.params.model_dump()
             params_to_save.update(
                 {
+                    "training-kind" : "multiclass",
                     "test_size": self.test_size,
                     "base_model": self.base_model,
                     "n_train": len(self.ds["train"]),

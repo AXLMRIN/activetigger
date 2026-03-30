@@ -302,6 +302,7 @@ def post_bert(
         return None
 
     except Exception as e:
+        print(f"ERREUR : \n{e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
