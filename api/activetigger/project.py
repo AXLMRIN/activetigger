@@ -1527,11 +1527,19 @@ class Project:
         else:
             raise Exception(f"Dataset {dataset_type} not recognized")
 
+        scheme_ = self.schemes.available()[scheme_name]
+        training_kind = scheme_.kind 
+        if training_kind not in ["multiclass", "multilabel"]:
+            raise Exception(f"Prediction does not support this type of scheme "
+                            f"(kind: {training_kind})")
+        scheme_labels = scheme_.labels
         self.languagemodels.start_predicting_process(
             project_slug=self.name,
             name=model_name,
             user=username,
             df=df,
+            training_kind=training_kind,
+            scheme_labels=scheme_labels,
             col_label=col_label,
             dataset=dataset_type,
             batch_size=batch_size,

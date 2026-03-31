@@ -434,8 +434,8 @@ def get_metrics_multiclass(
     return statistics
 
 def get_metrics_multilabel(
-    Y_true: pd.Series,
-    Y_pred: pd.Series,
+    Y_true: np.ndarray,
+    Y_pred: np.ndarray,
     id2label : dict[int:str],
     texts: pd.Series | None = None,
     decimals: int = 3,
@@ -470,20 +470,20 @@ def get_metrics_multilabel(
             y_pred = [label if y == 1 else f'not-{label}' for y in Y_pred[:,id]],
             labels = dummy_labels
         )
-        dict_of_tables[label] = pd.DataFrame(confusion, index=dummy_labels, columns=dummy_labels)
+        dict_of_tables[label] = pd.DataFrame(confusion[label], index=dummy_labels, columns=dummy_labels)
         dict_of_tables[label]["Total"] = dict_of_tables[label].sum(axis=1)
         dict_of_tables[label] = dict_of_tables[label].T
         dict_of_tables[label]["Total"] = dict_of_tables[label].sum(axis=1)
         dict_of_tables[label] = dict_of_tables[label].T
 
     # Compute score averaged (micro, macro, weighted) --- --- --- --- --- --- --
-    f1_weighted = f1_score(Y_true, Y_pred, average="weighted")
+    f1_weighted = f1_score(Y_true, Y_pred, average="weighted", zero_division=1)
     f1_weighted = round(f1_weighted, decimals)
 
-    f1_macro = f1_score(Y_true, Y_pred, average="macro")
+    f1_macro = f1_score(Y_true, Y_pred, average="macro", zero_division=1)
     f1_macro = round(f1_macro, decimals)
 
-    f1_micro = f1_score(Y_true, Y_pred, average="micro")
+    f1_micro = f1_score(Y_true, Y_pred, average="micro", zero_division=1)
     f1_micro = round(f1_micro, decimals)
 
     precision_micro = precision_score(Y_true, Y_pred, average="micro", zero_division=1)

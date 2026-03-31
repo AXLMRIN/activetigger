@@ -20,9 +20,11 @@ from activetigger.datamodels import MLStatisticsModel, ReturnTaskPredictModel, T
 from activetigger.functions import (
     get_device, 
     get_metrics_multiclass, 
+    get_metrics_multilabel, 
     dichotomize, 
     logits_to_probs,
     activate_probs,
+    split_annotation
 )
 from activetigger.tasks.base_task import BaseTask
 
@@ -93,6 +95,8 @@ class PredictBertMultiClass(BaseTask):
         
         self.training_kind = training_kind
         self.scheme_labels = scheme_labels
+        self.threshold = None
+
         # read the config file
         with open(self.path / "parameters.json", "r") as jsonfile:
             self.model_config = json.load(jsonfile)
@@ -101,6 +105,12 @@ class PredictBertMultiClass(BaseTask):
                 self.modeltype = self.model_config["base_model"]
             else:
                 raise ValueError("No model type found in config.json. Please check the file.")
+            if "threshold" in self.model_config and self.training_kind == "multilabel":
+                self.threshold = self.model_config["threshold"]
+            elif self.training_kind == "multiclass": 
+                pass # we don't need it
+            else: 
+                raise ValueError("Threshold not found in config.json while required for multilabel")
 
     def __load_external_file(
         self, path_data: Path, external_dataset: TextDatasetModel | None
@@ -181,6 +191,22 @@ class PredictBertMultiClass(BaseTask):
             pred["prediction"] = np.argmax(y_pred,axis = 1) # 0,1,2,0
             pred["prediction"] = pred["prediction"].replace(id2label) #label1, label2 ...
 
+        elif self.training_kind == "multilabel":
+            # Save labels as index + pipe -> [1,0,0,1] -> 0|3
+            y_pred = activate_probs(
+                probs = prob_predictions,
+                strategy="threshold",
+                force_max_1_per_row=True
+            ) # shape: n_rows x n_labels
+            pred["prediction"] = [
+                "|".join([
+                    id2label[index]
+                    for index,activation in enumerate(row) 
+                    if activation == 1]
+                )
+                for row in y_pred
+            ]# label1|label2, label1, label2|label3
+            
         # add text in the dataframe to be able to get mismatch
         pred["text"] = self.df[self.col_text]
 
@@ -223,6 +249,23 @@ class PredictBertMultiClass(BaseTask):
                     texts=pred[filter]["text"],
                     id2label=id2label
                 )
+            elif self.training_kind == "multilabel":
+                # reformat entries to matrices
+                label2id = {label:id for id,label in id2label.items()}
+                y_true = np.array([
+                    [int(label in split_annotation(annotation)) for label in label2id]
+                    for annotation in pred.loc[filter, "GS-label"].copy()
+                ])
+                y_pred = np.array([
+                    [int(label in split_annotation(annotation)) for label in label2id]
+                    for annotation in pred.loc[filter, "prediction"].copy()
+                ])
+                metrics[dataset] = get_metrics_multilabel(
+                    Y_true = y_true,
+                    Y_pred = y_pred,
+                    id2label=id2label,
+                    texts=pred[filter]["text"],
+                )
 
         # add out of sample (labelled data not in training data)
         index_training_data = (
@@ -241,6 +284,23 @@ class PredictBertMultiClass(BaseTask):
                     Y_pred= pred.loc[filter_oos, "prediction"],
                     texts=pred[filter_oos]["text"],
                     id2label=id2label
+                )
+            elif self.training_kind == "multilabel":
+                # reformat entries to matrices
+                label2id = {label:id for id,label in id2label.items()}
+                y_true = np.array([
+                    [int(label in split_annotation(annotation)) for label in label2id]
+                    for annotation in pred.loc[filter_oos, "GS-label"].copy()
+                ])
+                y_pred = np.array([
+                    [int(label in split_annotation(annotation)) for label in label2id]
+                    for annotation in pred.loc[filter_oos, "prediction"].copy()
+                ])
+                metrics[dataset] = get_metrics_multilabel(
+                    Y_true = y_true,
+                    Y_pred = y_pred,
+                    id2label=id2label,
+                    texts=pred[filter_oos]["text"],
                 )
 
         # write the metrics in a json file
