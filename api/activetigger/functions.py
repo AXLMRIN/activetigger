@@ -411,7 +411,7 @@ def get_metrics_multiclass(
             axis=1,
             join="inner",
         ).reset_index()
-        tab.columns = pd.Index(["id", "label", "prediction", "text"])
+        tab.columns = pd.Index(["id", "GS-label", "prediction", "text"])
         false_prediction = tab.to_dict(orient="records")
     else:
         # TODO: explicit or refactor
@@ -505,7 +505,7 @@ def get_metrics_multilabel(
             axis=1,
             join="inner",
         ).reset_index()
-        tab.columns = pd.Index(["id", "label", "prediction", "text"])
+        tab.columns = pd.Index(["id", "GS-label", "prediction", "text"])
         false_prediction = tab.to_dict(orient="records")
     else:
         # TODO: explicit or refactor
