@@ -277,6 +277,43 @@ def decrypt(text: str | None, secret_key: str | None) -> str:
     return decrypted_token.decode()
 
 
+def logits_to_probs(logits : np.ndarray) -> np.ndarray:
+    """
+    Transform the logit to probabilities using the sigmoid
+    """
+    sigmoid = torch.nn.Sigmoid()
+    return sigmoid(torch.Tensor(logits)).numpy()
+
+def activate_probs(probs : np.ndarray, threshold : float = 0.5) -> np.ndarray:
+    """
+    Use threshold to activate a probability matrix
+    """
+    label_prediction = np.zeros(probs.shape)
+    label_prediction[np.where(probs >= threshold)] = 1
+    return label_prediction
+
+def find_best_threshold(y_true: pd.Series, y_logit_pred: pd.Series) -> tuple[float,np.ndarray,np.ndarray]:  
+    """
+    Find the best threshold using Precision-Recall curve and return the probabilities 
+    as well as the activated matrix
+    https://www.geeksforgeeks.org/machine-learning/how-to-use-scikit-learns-tunedthresholdclassifiercv-for-threshold-optimization/
+    """
+    if y_true.shape != y_logit_pred.shape:
+        raise ValueError(f"find_best_threshold: Shape missmatch "
+            f"{y_true.shape}!={y_logit_pred.shape}")
+    
+    y_prob_pred = logits_to_probs(y_logit_pred)
+
+    thresholds = list(set(y_prob_pred.reshape(-1)))
+    best_threshold, best_f1 = -1, -1
+    for t in thresholds:
+        f1 = f1_score(y_true=y_true, y_pred=activate_probs(y_prob_pred,t), average='macro')
+        if f1 > best_f1:
+            best_f1 = float(f1)
+            best_threshold = float(t)
+    label_prediction = activate_probs(y_prob_pred, best_threshold)
+    return best_threshold, y_prob_pred, label_prediction
+
 def get_metrics_multiclass(
     Y_true: pd.Series,
     Y_pred: pd.Series,
@@ -366,6 +403,102 @@ def get_metrics_multiclass(
     )
     return statistics
 
+def get_metrics_multilabel(
+    Y_true: pd.Series,
+    Y_pred: pd.Series,
+    id2label : dict[int:str],
+    texts: pd.Series | None = None,
+    decimals: int = 3,
+) -> MLStatisticsModel:
+    """
+    Compute metrics for a prediction
+    - precision, f1, recall per label
+    - f1 (weighted macro, micro) and precision micro
+    - confusion matrix and table
+    """
+    print("Calculating metrics (multilabel)")
+    # Compute scores and confusion matrices per label --- --- --- --- --- --- --- --- --- --- --- --- -
+    precision_label = {}
+    f1_label = {}
+    recall_label = {}
+    confusion = {}
+    dict_of_tables : dict[str:pd.DataFrame] = {}
+    for id,label in id2label.items():
+        parameters = {
+            "y_true": Y_true[:,id], 
+            "y_pred": Y_pred[:,id], 
+            "average": "macro", 
+            "zero_division": 1,
+        }
+        precision_label[label] = round(precision_score(**parameters) , decimals)
+        recall_label[label]    = round(recall_score(**parameters)    , decimals)
+        f1_label[label]        = round(precision_score(**parameters) , decimals)
+        
+        dummy_labels = [label, f"not-{label}"]
+        confusion = confusion_matrix(
+            y_true = [label if y == 1 else f'not-{label}' for y in Y_true[:,id]], 
+            y_pred = [label if y == 1 else f'not-{label}' for y in Y_pred[:,id]],
+            labels = dummy_labels
+        )
+        dict_of_tables[label] = pd.DataFrame(confusion, index=dummy_labels, columns=dummy_labels)
+        dict_of_tables[label]["Total"] = dict_of_tables[label].sum(axis=1)
+        dict_of_tables[label] = dict_of_tables[label].T
+        dict_of_tables[label]["Total"] = dict_of_tables[label].sum(axis=1)
+        dict_of_tables[label] = dict_of_tables[label].T
+
+    # Compute score averaged (micro, macro, weighted) --- --- --- --- --- --- --
+    f1_weighted = f1_score(Y_true, Y_pred, average="weighted")
+    f1_weighted = round(f1_weighted, decimals)
+
+    f1_macro = f1_score(Y_true, Y_pred, average="macro")
+    f1_macro = round(f1_macro, decimals)
+
+    f1_micro = f1_score(Y_true, Y_pred, average="micro")
+    f1_micro = round(f1_micro, decimals)
+
+    precision_micro = precision_score(Y_true, Y_pred, average="micro", zero_division=1)
+    precision_micro = round(precision_micro, decimals)
+
+    accuracy = accuracy_score(Y_true, Y_pred)
+    accuracy = round(accuracy, decimals)
+
+    # Create a table of false predictions --- --- --- --- --- --- --- --- --- --
+    filter_false_prediction = Y_true != Y_pred
+    if texts is not None:
+        # Conca
+        tab = pd.concat(
+            [
+                pd.Series(Y_true[filter_false_prediction]),
+                pd.Series(Y_pred[filter_false_prediction]),
+                pd.Series(texts),
+            ],
+            axis=1,
+            join="inner",
+        ).reset_index()
+        tab.columns = pd.Index(["id", "label", "prediction", "text"])
+        false_prediction = tab.to_dict(orient="records")
+    else:
+        # TODO: explicit or refactor
+        false_prediction = filter_false_prediction.loc[lambda x: x].index.tolist()
+
+    statistics = MLStatisticsModel(
+        training_kind="multilabel",
+        f1_label=f1_label,
+        precision_label=precision_label,
+        recall_label=recall_label,
+        confusion_matrix=confusion.tolist(),
+        f1_weighted=f1_weighted,
+        f1_macro=f1_macro,
+        f1_micro=f1_micro,
+        precision=precision_micro,
+        accuracy=accuracy,
+        false_predictions=false_prediction,
+        table=cast(
+            dict[str, Any], 
+            {key:table.to_dict(orient="split") for key, table in dict_of_tables.items()}
+        ),
+    )
+    return statistics
 
 def get_dir_size(path: str = ".") -> float:
     """
@@ -450,6 +583,15 @@ def rejoin_annotation(list_of_annotations : list[str]) -> str|pd._libs.missing.N
         ):
             return "|".join(list_of_annotations)
     return pd.NA
+
+
+def matrix_to_label(row : list[int], id2label: dict[int:str]) -> str:
+    """
+    For a row of labels: [1,0,1]
+    return the labels associated to the columns with a 1
+    """
+    return [id2label[i] for i,value in enumerate(row) if value == 1]
+
 def get_number_occurrences_per_label(annotations: pd.Series, labels: list[str]) -> dict[str:int]:
     """
     For all labels in annotations ("labelX" if multiclass, "labelX|labelY" if
