@@ -17,7 +17,13 @@ from transformers import (  # type: ignore[import]
 
 from activetigger.data import Data
 from activetigger.datamodels import MLStatisticsModel, ReturnTaskPredictModel, TextDatasetModel
-from activetigger.functions import get_device, get_metrics_multiclass, dichotomize
+from activetigger.functions import (
+    get_device, 
+    get_metrics_multiclass, 
+    dichotomize, 
+    logits_to_probs,
+    activate_probs,
+)
 from activetigger.tasks.base_task import BaseTask
 
 
@@ -35,6 +41,8 @@ class PredictBertMultiClass(BaseTask):
         path: Path,
         df: DataFrame | None,
         col_text: str,
+        training_kind: str,
+        scheme_labels : list[str],
         col_label: str | None = None,
         path_data: Path | None = None,
         external_dataset: TextDatasetModel | None = None,
@@ -83,6 +91,8 @@ class PredictBertMultiClass(BaseTask):
         if statistics is not None and col_label is None:
             raise ValueError("Column label must be provided to compute statistics")
         
+        self.training_kind = training_kind
+        self.scheme_labels = scheme_labels
         # read the config file
         with open(self.path / "parameters.json", "r") as jsonfile:
             self.model_config = json.load(jsonfile)
@@ -141,21 +151,35 @@ class PredictBertMultiClass(BaseTask):
             if self.event.is_set():
                 raise Exception("Process interrupted by user")
 
-    def __transform_to_dataframe(self, predictions: list, columns: list) -> DataFrame:
+    def __transform_to_dataframe(self, prob_predictions: np.ndarray, id2label: dict[int:str]
+    ) -> DataFrame:
         """
-        Transform the predictions to a dataframe
+        Transform the prob_predictions into a dataframe
         """
         if self.df is None:
-            raise ValueError("Dataframe is required to transform predictions")
+            raise ValueError("Dataframe is required to transform to predictions")
+        
+        id2label = dict(sorted(id2label.items(), key=lambda I : I[0])) # sort by index 0,1,2 ...
+
+        if list(id2label.keys()) != [i for i in range(len(id2label))]:
+            raise ValueError(f"Warning, something is off with the id2label: {id2label}")
+        
         pred = pd.DataFrame(
-            np.concatenate(predictions),
-            columns=columns,
+            prob_predictions,
+            columns=list(id2label.values()),
             index=self.df.index,
         )
 
-        entropy = -1 * (pred * np.log(pred)).sum(axis=1)
+        entropy = -1 * (prob_predictions * np.log(prob_predictions)).sum(axis=1)
         pred["entropy"] = entropy
-        pred["prediction"] = pred.drop(columns="entropy").idxmax(axis=1)
+        if self.training_kind == "multiclass":
+            y_pred = activate_probs(
+                probs = prob_predictions,
+                strategy="max",
+                force_max_1_per_row=True
+            ) # shape: n_rows x n_labels
+            pred["prediction"] = np.argmax(y_pred,axis = 1) # 0,1,2,0
+            pred["prediction"] = pred["prediction"].replace(id2label) #label1, label2 ...
 
         # add text in the dataframe to be able to get mismatch
         pred["text"] = self.df[self.col_text]
@@ -192,25 +216,32 @@ class PredictBertMultiClass(BaseTask):
             filter = filter_label & filter_dataset
             if filter.sum() < 5:
                 continue
-            metrics[dataset] = get_metrics_multiclass(
-                pred[filter]["GS-label"],
-                pred[filter]["prediction"],
-                texts=pred[filter]["text"],
-                id2label=id2label
-            )
+            if self.training_kind == "multiclass":
+                metrics[dataset] = get_metrics_multiclass(
+                    Y_true= pred.loc[filter, "GS-label"],
+                    Y_pred= pred.loc[filter, "prediction"],
+                    texts=pred[filter]["text"],
+                    id2label=id2label
+                )
 
         # add out of sample (labelled data not in training data)
-        index_model = pd.read_parquet(self.path.joinpath("training_data.parquet"), columns=[]).index
+        index_training_data = (
+            pd.read_parquet(self.path.joinpath("training_data.parquet"), columns=[])
+            .index
+        )
         filter_oos = (
-            ~pred.index.isin(index_model) & filter_label & pred[self.col_datasets] == "train"
+            ~pred.index.isin(index_training_data) &
+            filter_label &
+            pred[self.col_datasets] == "train"
         )
         if filter_oos.sum() > 10:
-            metrics["outofsample"] = get_metrics_multiclass(
-                pred[filter_oos]["GS-label"],
-                pred[filter_oos]["prediction"],
-                texts=pred[filter_oos]["text"],
-                id2label=id2label
-            )
+            if self.training_kind == "multiclass":
+                metrics["outofsample"] = get_metrics_multiclass(
+                    Y_true= pred.loc[filter_oos, "GS-label"],
+                    Y_pred= pred.loc[filter_oos, "prediction"],
+                    texts=pred[filter_oos]["text"],
+                    id2label=id2label
+                )
 
         # write the metrics in a json file
         with open(str(self.path.joinpath(f"metrics_predict_{time.time()}.json")), "w") as f:
@@ -222,7 +253,7 @@ class PredictBertMultiClass(BaseTask):
         """
         Main process to predict
         """
-        print("start predicting")
+        print(f"start predicting ({self.training_kind})")
 
         if self.df is None:
             raise ValueError("Dataframe is required for prediction")
@@ -235,12 +266,25 @@ class PredictBertMultiClass(BaseTask):
         device = get_device()
         print(f"Using {device} for prediction")
         model.to(device)
+        try: 
+            models_id2label = model.config.id2label
+            num_labels = len(models_id2label)
+        except:
+            raise ValueError(f"Model is wrong, id2label missing from the model's"
+                " config.")
+        
+        if not np.isin(self.scheme_labels, list(models_id2label.values())).all():
+            # WARNING
+            print(
+                f"The scheme labels ({self.scheme_labels}) are different "
+                f"from the labels used during training. Will use {list(models_id2label.values())} "
+                f"instead."
+            )
 
         try:
             # prediction by batches
-            predictions = []
+            proba_predictions = np.zeros((0,num_labels))
             for i in range(0, self.df.shape[0], self.batch):
-                print("Next chunck prediction")
                 self.__listen_stop_event()
                 chunk = tokenizer(
                     list(self.df[self.col_text][i : i + self.batch]),
@@ -252,15 +296,16 @@ class PredictBertMultiClass(BaseTask):
                 chunk = chunk.to(device)
                 with torch.no_grad():
                     outputs = model(**chunk)
-                res = outputs[0].detach().cpu().softmax(1).numpy()
-                predictions.append(res)
-                self.__write_progress((len(predictions) * self.batch / self.df.shape[0]) * 100)
+                logits = outputs[0].detach().cpu().numpy()
+                proba = logits_to_probs(logits, kind=self.training_kind)
+                proba_predictions = np.append(proba_predictions,proba, axis = 0)
+                self.__write_progress(100 * (i + self.batch) / self.df.shape[0])
 
             # transform predictions to clean dataframe
             pred = self.__transform_to_dataframe(
-                predictions, columns=sorted(list(model.config.label2id.keys()))
+                proba_predictions, 
+                id2label = models_id2label
             )
-
             # save the prediction to file
             pred.to_parquet(self.path.joinpath(self.file_name))
 

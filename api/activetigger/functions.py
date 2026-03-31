@@ -14,6 +14,8 @@ import pandas as pd  # type: ignore[import]
 import regex
 import spacy
 import torch
+from torch import Tensor
+from torch.nn import Sigmoid
 from cryptography.fernet import Fernet
 from pandas import Series
 from sklearn.metrics import (  # type: ignore[import]
@@ -277,22 +279,49 @@ def decrypt(text: str | None, secret_key: str | None) -> str:
     return decrypted_token.decode()
 
 
-def logits_to_probs(logits : np.ndarray) -> np.ndarray:
+def logits_to_probs(logits : np.ndarray, kind: str) -> np.ndarray:
     """
     Transform the logit to probabilities using the sigmoid
     """
-    sigmoid = torch.nn.Sigmoid()
-    return sigmoid(torch.Tensor(logits)).numpy()
+    if kind == "multilabel":
+        sigm = Sigmoid()
+        return sigm(Tensor(logits)).numpy()
+    elif kind == "multiclass":
+        return  Tensor(logits).softmax(1).numpy()
+    else:
+        raise Exception(f"logits_to_probs only accepts type = \"multilabel\" or "
+                        f"\"multiclass\" (received:{kind})")
 
-def activate_probs(probs : np.ndarray, threshold : float = 0.5) -> np.ndarray:
+def activate_probs(
+        probs : np.ndarray, 
+        threshold : float = 0.5, 
+        strategy: str = "threshold",
+        force_max_1_per_row : bool = False,
+    ) -> np.ndarray:
     """
-    Use threshold to activate a probability matrix
+    If strategy = "threshold", use threshold to activate a probability matrix, 
+    if strategy = "max" use the maximum probability instead
     """
-    label_prediction = np.zeros(probs.shape)
-    label_prediction[np.where(probs >= threshold)] = 1
+    if strategy == "threshold":
+        label_prediction = np.zeros(probs.shape)
+        label_prediction[np.where(probs >= threshold)] = 1
+    elif strategy == "max":
+        label_prediction = np.zeros(probs.shape)
+        max_per_row = np.max(probs, axis = 1).reshape(-1, 1)
+        label_prediction[np.where((probs-max_per_row) >= 0)] = 1
+    else:
+        raise ValueError(f"Strategy ({strategy})not supported")
+    if force_max_1_per_row:
+        # sanitize, if equality 
+        for iRow,row in enumerate(label_prediction):
+            if sum(row) > 1:
+                argmax = np.argmax(row)
+                label_prediction[iRow,:] = 0
+                label_prediction[iRow,argmax] = 1
     return label_prediction
+            
 
-def find_best_threshold(y_true: pd.Series, y_logit_pred: pd.Series) -> tuple[float,np.ndarray,np.ndarray]:  
+def find_best_threshold(y_true: pd.Series, y_logit_pred: pd.Series, training_kind : str) -> tuple[float,np.ndarray,np.ndarray]:  
     """
     Find the best threshold using Precision-Recall curve and return the probabilities 
     as well as the activated matrix
@@ -302,16 +331,17 @@ def find_best_threshold(y_true: pd.Series, y_logit_pred: pd.Series) -> tuple[flo
         raise ValueError(f"find_best_threshold: Shape missmatch "
             f"{y_true.shape}!={y_logit_pred.shape}")
     
-    y_prob_pred = logits_to_probs(y_logit_pred)
+    y_prob_pred = logits_to_probs(y_logit_pred, training_kind)
 
     thresholds = list(set(y_prob_pred.reshape(-1)))
     best_threshold, best_f1 = -1, -1
     for t in thresholds:
-        f1 = f1_score(y_true=y_true, y_pred=activate_probs(y_prob_pred,t), average='macro')
+        y_pred = activate_probs(y_prob_pred,threshold=t, strategy="threshold")
+        f1 = f1_score(y_true=y_true, y_pred=y_pred, average='macro', zero_division=1)
         if f1 > best_f1:
             best_f1 = float(f1)
             best_threshold = float(t)
-    label_prediction = activate_probs(y_prob_pred, best_threshold)
+    label_prediction = activate_probs(y_prob_pred, best_threshold, strategy="threshold")
     return best_threshold, y_prob_pred, label_prediction
 
 def get_metrics_multiclass(
@@ -337,20 +367,20 @@ def get_metrics_multiclass(
     precision_label = precision_score(Y_true, Y_pred, average=None, labels=labels, zero_division=1)
     precision_label = [round(score, decimals) for score in precision_label]
 
-    f1_label = f1_score(Y_true, Y_pred, average=None, labels=labels)
+    f1_label = f1_score(Y_true, Y_pred, average=None, labels=labels, zero_division=1)
     f1_label = [round(score, decimals) for score in f1_label]
 
-    recall_label = recall_score(Y_true, Y_pred, average=None, labels=labels)
+    recall_label = recall_score(Y_true, Y_pred, average=None, labels=labels, zero_division=1)
     recall_label = [round(score, decimals) for score in recall_label]
 
     # Compute score averaged (micro, macro, weighted) --- --- --- --- --- --- --
-    f1_weighted = f1_score(Y_true, Y_pred, average="weighted")
+    f1_weighted = f1_score(Y_true, Y_pred, average="weighted", zero_division=1)
     f1_weighted = round(f1_weighted, decimals)
 
-    f1_macro = f1_score(Y_true, Y_pred, average="macro")
+    f1_macro = f1_score(Y_true, Y_pred, average="macro", zero_division=1)
     f1_macro = round(f1_macro, decimals)
 
-    f1_micro = f1_score(Y_true, Y_pred, average="micro")
+    f1_micro = f1_score(Y_true, Y_pred, average="micro", zero_division=1)
     f1_micro = round(f1_micro, decimals)
 
     precision_micro = precision_score(Y_true, Y_pred, average="micro", zero_division=1)

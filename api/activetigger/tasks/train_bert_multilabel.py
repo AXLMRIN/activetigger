@@ -557,7 +557,8 @@ class TrainBertMultiLabel(BaseTask):
 
             threshold,y_prob_pred, labels_predicted  = find_best_threshold(
                 y_true = predictions_train.label_ids,
-                y_logit_pred = predictions_train.predictions
+                y_logit_pred = predictions_train.predictions,
+                training_kind = self.training_kind
             )
 
             df_train_results["predicted_label-matrix"] = y_prob_pred.tolist()
@@ -585,8 +586,8 @@ class TrainBertMultiLabel(BaseTask):
                     for row in predictions_test.label_ids
                 ]
 
-                y_prob_pred = logits_to_probs(predictions_test.predictions)
-                y_label_pred = activate_probs(y_prob_pred, threshold)
+                y_prob_pred = logits_to_probs(predictions_test.predictions,kind=self.training_kind)
+                y_label_pred = activate_probs(y_prob_pred, threshold, strategy="threshold")
                 df_test_results["predicted_label-matrix"] = y_prob_pred.tolist()
                 df_test_results["predicted_label"] = [
                     '|'.join(matrix_to_label(row, id2label))
@@ -610,6 +611,7 @@ class TrainBertMultiLabel(BaseTask):
                 {
                     "training-kind" : self.training_kind,
                     "test_size": self.test_size,
+                    "threshold": threshold,
                     "use_dichotomization": self.use_dichotomization,
                     "label_for_dichotomization": self.label_for_dichotomization,
                     "base_model": self.base_model,
