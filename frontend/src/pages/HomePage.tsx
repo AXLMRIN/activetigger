@@ -4,7 +4,7 @@ import { FaGithub } from 'react-icons/fa';
 import { IoMdLogOut } from 'react-icons/io';
 import { Link, useNavigate } from 'react-router-dom';
 import { Tooltip } from 'react-tooltip';
-import logo from '../assets/at.png';
+import logo from '../assets/at-tuna.png';
 import { LoginForm } from '../components/forms/LoginForm';
 import Notifications from '../components/layout/Notifications';
 import { useGetActiveUsers, useGetServer } from '../core/api';
@@ -98,7 +98,7 @@ export const HomePage: FC = () => {
                     color: '#ff9a3c',
                   }}
                 >
-                  Active Tigger
+                  Active Tuna
                 </h1>
                 <h3 className="m-0 fs-5 text-muted fw-normal">Explore & Annotate Text</h3>
                 <img
