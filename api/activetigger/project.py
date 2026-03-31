@@ -50,6 +50,7 @@ from activetigger.datamodels import (
     QuickModelInModel,
     StaticFileModel,
     UpdateComputing,
+    TextDatasetModel
 )
 from activetigger.db.manager import DatabaseManager
 from activetigger.features import Features
@@ -1487,6 +1488,91 @@ class Project:
             kind="train_languagemodel",
             parameters={},
             user_name=username,
+        )
+
+    def start_language_model_prediction(self, 
+        username: str,
+        dataset_type: str,
+        datasets: list[str]|None,
+        scheme_name: str,
+        model_name: str,
+        external_dataset: TextDatasetModel,
+        batch_size: int = 32
+    ) -> None:
+        """
+        Fetch all necessary data and launch a prediction process
+        """
+        # Retrieve relevant data
+        if dataset_type == "external":
+            df = None
+            col_label = None
+            datasets = None
+            path_data = self.data.get_path(external_dataset.filename)
+        elif dataset_type == "all":
+            df = None
+            col_label = None
+            datasets = None
+            path_data = self.data.path_data_all
+        elif dataset_type == "annotable":
+            if datasets is None:
+                raise Exception("No dataset available for prediction")
+            df = self.schemes.get_scheme(
+                scheme=scheme_name, 
+                complete=True, 
+                datasets=datasets, 
+                id_external=True
+            )
+            col_label = "labels"
+            path_data = None
+        else:
+            raise Exception(f"Dataset {dataset_type} not recognized")
+
+        self.languagemodels.start_predicting_process(
+            project_slug=self.name,
+            name=model_name,
+            user=username,
+            df=df,
+            col_label=col_label,
+            dataset=dataset_type,
+            batch_size=batch_size,
+            statistics=datasets,
+            path_data=path_data,
+            external_dataset=external_dataset,
+        ) 
+
+    def start_quick_model_prediction(
+            self, 
+            username:str,
+            dataset_type : str,
+            datasets: list[str] | None, 
+            scheme_name: str,
+            model_name: str,
+    ) -> None:
+        """
+        Fetch all necessary data and launch prediction process
+        """
+        sm = self.quickmodels.get(model_name)
+        if sm is None:
+            raise Exception(f"Quick model {model_name} not found")
+
+        # build the X, y dataframe
+        df = self.features.get(sm.features, dataset=dataset_type, keep_dataset_column=True)
+        cols_features = [col for col in df.columns if col != "dataset"]
+        labels = self.schemes.get_scheme(scheme=scheme_name, complete=True, datasets=datasets)
+        df["labels"] = labels["labels"]
+        df["text"] = labels["text"]
+
+        # add the data for the labels
+        self.quickmodels.start_predicting_process(
+            name=model_name,
+            username=username,
+            df=df,
+            dataset=dataset_type,
+            col_dataset="dataset",
+            cols_features=cols_features,
+            col_label="labels",
+            statistics=datasets,
+            col_text="text",
         )
 
     def start_generation(self, request: GenerationRequest, username: str) -> None:
