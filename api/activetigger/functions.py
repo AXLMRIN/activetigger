@@ -435,7 +435,7 @@ def get_metrics_multilabel(
         f1_label[label]        = round(precision_score(**parameters) , decimals)
         
         dummy_labels = [label, f"not-{label}"]
-        confusion = confusion_matrix(
+        confusion[label] = confusion_matrix(
             y_true = [label if y == 1 else f'not-{label}' for y in Y_true[:,id]], 
             y_pred = [label if y == 1 else f'not-{label}' for y in Y_pred[:,id]],
             labels = dummy_labels
@@ -486,7 +486,7 @@ def get_metrics_multilabel(
         f1_label=f1_label,
         precision_label=precision_label,
         recall_label=recall_label,
-        confusion_matrix=confusion.tolist(),
+        confusion_matrix=[[]], # Unused later, table is used instead
         f1_weighted=f1_weighted,
         f1_macro=f1_macro,
         f1_micro=f1_micro,
