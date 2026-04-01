@@ -555,11 +555,12 @@ class TrainBertMultiLabel(BaseTask):
                 for row in predictions_train.label_ids
             ]
 
-            threshold,y_prob_pred, labels_predicted  = find_best_threshold(
+            y_prob_pred = logits_to_probs(predictions_train.predictions, self.training_kind)
+            threshold = find_best_threshold(
                 y_true = predictions_train.label_ids,
-                y_logit_pred = predictions_train.predictions,
-                training_kind = self.training_kind
+                y_prob_pred = y_prob_pred,
             )
+            labels_predicted = activate_probs(y_prob_pred, threshold)
 
             df_train_results["predicted_label-matrix"] = y_prob_pred.tolist()
             df_train_results["predicted_label"] = [

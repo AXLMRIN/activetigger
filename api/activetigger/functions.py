@@ -321,17 +321,15 @@ def activate_probs(
     return label_prediction
             
 
-def find_best_threshold(y_true: pd.Series, y_logit_pred: pd.Series, training_kind : str) -> tuple[float,np.ndarray,np.ndarray]:  
+def find_best_threshold(y_true: pd.Series, y_prob_pred: pd.Series) -> tuple[float,np.ndarray,np.ndarray]:  
     """
     Find the best threshold using Precision-Recall curve and return the probabilities 
     as well as the activated matrix
     https://www.geeksforgeeks.org/machine-learning/how-to-use-scikit-learns-tunedthresholdclassifiercv-for-threshold-optimization/
     """
-    if y_true.shape != y_logit_pred.shape:
+    if y_true.shape != y_prob_pred.shape:
         raise ValueError(f"find_best_threshold: Shape missmatch "
-            f"{y_true.shape}!={y_logit_pred.shape}")
-    
-    y_prob_pred = logits_to_probs(y_logit_pred, training_kind)
+            f"{y_true.shape}!={y_prob_pred.shape}")
 
     thresholds = list(set(y_prob_pred.reshape(-1)))
     best_threshold, best_f1 = -1, -1
@@ -341,8 +339,7 @@ def find_best_threshold(y_true: pd.Series, y_logit_pred: pd.Series, training_kin
         if f1 > best_f1:
             best_f1 = float(f1)
             best_threshold = float(t)
-    label_prediction = activate_probs(y_prob_pred, best_threshold, strategy="threshold")
-    return best_threshold, y_prob_pred, label_prediction
+    return best_threshold
 
 def get_metrics_multiclass(
     Y_true: pd.Series,
