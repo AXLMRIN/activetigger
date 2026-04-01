@@ -196,7 +196,7 @@ class PredictBertMultiClass(BaseTask):
             y_pred = activate_probs(
                 probs = prob_predictions,
                 strategy="threshold",
-                force_max_1_per_row=True
+                threshold=self.threshold
             ) # shape: n_rows x n_labels
             pred["prediction"] = [
                 "|".join([
