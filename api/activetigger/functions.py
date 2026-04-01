@@ -493,14 +493,26 @@ def get_metrics_multilabel(
     accuracy = round(accuracy, decimals)
 
     # Create a table of false predictions --- --- --- --- --- --- --- --- --- --
-    filter_false_prediction = Y_true != Y_pred
+    filter_false_prediction = (Y_true != Y_pred).all(axis = 1)
     if texts is not None:
+        # Need to reconstruct the labels, for now they are matrices [[1,0,0], [1,1,0], ...]
+        Y_true_as_series = (
+            pd.Series(Y_true.tolist(), index=texts.index)
+            .apply(lambda row: matrix_to_label(row, id2label))
+            .apply(rejoin_annotation)
+        )
+        Y_pred_as_series = (
+            pd.Series(Y_pred.tolist(), index=texts.index)
+            .apply(lambda row: matrix_to_label(row, id2label))
+            .apply(rejoin_annotation)
+        )
+        # Now: ["label1|label2", "label2", ...]
         # Conca
         tab = pd.concat(
             [
-                pd.Series(Y_true[filter_false_prediction]),
-                pd.Series(Y_pred[filter_false_prediction]),
-                pd.Series(texts),
+                pd.Series(Y_true_as_series[filter_false_prediction]),
+                pd.Series(Y_pred_as_series[filter_false_prediction]),
+                pd.Series(texts[filter_false_prediction]),
             ],
             axis=1,
             join="inner",
@@ -617,7 +629,7 @@ def rejoin_annotation(list_of_annotations : list[str]) -> str|pd._libs.missing.N
 
 def matrix_to_label(row : list[int], id2label: dict[int:str]) -> str:
     """
-    For a row of labels: [1,0,1]
+    For a row of labels: [1,0,1] => ["label1", "label3"]
     return the labels associated to the columns with a 1
     """
     return [id2label[i] for i,value in enumerate(row) if value == 1]
