@@ -609,7 +609,7 @@ class TrainBertMultiLabel(BaseTask):
             params_to_save = self.params.model_dump()
             params_to_save.update(
                 {
-                    "training-kind" : self.training_kind,
+                    "training_kind" : self.training_kind,
                     "test_size": self.test_size,
                     "threshold": threshold,
                     "use_dichotomization": self.use_dichotomization,

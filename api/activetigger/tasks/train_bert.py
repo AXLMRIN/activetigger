@@ -538,7 +538,7 @@ class TrainBertMultiClass(BaseTask):
             params_to_save = self.params.model_dump()
             params_to_save.update(
                 {
-                    "training-kind" : "multiclass",
+                    "training_kind" : "multiclass",
                     "labels": labels,
                     "use_dichotomization": self.use_dichotomization,
                     "label_for_dichotomization": self.label_for_dichotomization,
