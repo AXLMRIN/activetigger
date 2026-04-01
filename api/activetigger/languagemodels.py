@@ -23,6 +23,7 @@ from activetigger.datamodels import (
     ModelScoresModel,
     StaticFileModel,
     TextDatasetModel,
+    MLStatisticsModel,
 )
 from activetigger.db.languagemodels import ModelsService
 from activetigger.db.manager import DatabaseManager
@@ -607,9 +608,14 @@ class LanguageModels:
         if not self.exists(model_name):
             raise Exception(f"The model {model_name} does not exist")
 
-        metrics = get_model_metrics(self.path.joinpath(model_name))
+        metrics : dict[str:MLStatisticsModel] = get_model_metrics(self.path.joinpath(model_name))
         if metrics is None:
             metrics = {}
+        
+        # TODO: delete this hotfix to ensure that previously trained models will not trigger errors
+        for key in metrics:
+            if "training_kind" not in metrics[key]:
+                metrics[key]["training_kind"] = "multiclass"
 
         return ModelInformationsModel(
             params=self.get_parameters(model_name),

@@ -149,6 +149,7 @@ def get_model_information(
         else:
             raise Exception(f"Model kind {kind} not recognized")
     except Exception as e:
+        print(f"Erreur in /models/information:\n{e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
