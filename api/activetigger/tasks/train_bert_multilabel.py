@@ -556,11 +556,25 @@ class TrainBertMultiLabel(BaseTask):
             ]
 
             y_prob_pred = logits_to_probs(predictions_train.predictions, self.training_kind)
-            threshold = find_best_threshold(
-                y_true = predictions_train.label_ids,
-                y_prob_pred = y_prob_pred,
-            )
-            labels_predicted = activate_probs(y_prob_pred, threshold)
+
+            if self.training_kind == "multiclass":
+                labels_predicted = activate_probs(
+                    probs = y_prob_pred, 
+                    strategy = "max",
+                    force_max_1_per_row = True
+                )
+            elif self.training_kind == "multilabel":
+                # threshold = find_best_threshold(
+                #     y_true = predictions_train.label_ids,
+                #     y_prob_pred = y_prob_pred,
+                # )
+                threshold = 0.5 # Force threshold = 0.5
+                labels_predicted = activate_probs(
+                    probs = y_prob_pred, 
+                    strategy = "threshold",
+                    threshold = threshold,
+                    force_max_1_per_row = False
+                )
 
             df_train_results["predicted_label-matrix"] = y_prob_pred.tolist()
             df_train_results["predicted_label"] = [
