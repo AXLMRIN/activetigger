@@ -5683,7 +5683,7 @@ export interface operations {
                 model_name: string;
                 scheme: string;
                 kind: string;
-                dataset?: string;
+                dataset_type?: string;
                 batch_size?: number;
                 project_slug: string;
             };
