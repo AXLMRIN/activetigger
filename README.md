@@ -209,13 +209,7 @@ The documentation is [here](https://emilienschultz.github.io/activetigger/docs/)
 
 ## Contributing
 
-Something in the code looks ugly ? Do you miss a feature? Please add your knowledge to the common effort.
-
-1. Create a fork
-2. Create your feature branch: `git checkout -b my-feature`
-3. Commit your changes: `git commit -am 'Add some feature'`
-4. Push to the branch: `git push origin my-new-feature`
-5. Submit a pull request 🚀
+Contributions are welcome! Please read the [Contributing Guide](CONTRIBUTING.md) before opening a pull request. The short version: **open an issue first** to discuss what you want to change, then submit a focused PR that addresses that single issue.
 
 ## Funding
 
