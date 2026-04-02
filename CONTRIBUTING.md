@@ -4,15 +4,13 @@ Thank you for your interest in contributing to ActiveTigger! To keep the project
 
 ## 1. Start with an issue
 
-**Do not open a pull request without an associated issue.**
+**Let us know what you want to do !**
 
 Before writing any code, open a GitHub issue describing what you want to change and why. This lets maintainers and other contributors discuss the approach, suggest alternatives, and confirm the change is welcome before you invest time on it. 
 
 - **Bug reports**: describe the problem, how to reproduce it, and what you expected instead.
 - **Feature requests**: explain the use case and how the feature would work from a user's perspective.
 - **Refactors / improvements**: explain what is wrong with the current code and what your proposed change improves.
-
-Wait for feedback from a maintainer before starting work. An issue marked as approved or assigned to you means you can go ahead.
 
 ## 2. One pull request, one concern
 
