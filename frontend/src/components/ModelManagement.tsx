@@ -215,6 +215,12 @@ export const ModelManagement: FC = () => {
 
   return (
     <>
+      {kindScheme === 'multilabel' && (
+        <div className="alert alert-info" role="alert">
+          Multilabel scheme: quick models are trained on dichotomized labels (one-vs-rest), while
+          BERT models support native multilabel classification.
+        </div>
+      )}
       <span className="fw-semibold text-muted small">Quick Models</span>
       <ModelsPillDisplay
         modelNames={availableQuickModels
