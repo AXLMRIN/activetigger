@@ -272,7 +272,6 @@ class TrainBert(BaseTask):
         col_label: str,
         col_text: str,
         label2id: dict[str, int],
-        device: torch.device,
     ) -> datasets.Dataset:
         """Transform the dataframe into a dataset with the right format for
         training"""
@@ -295,10 +294,7 @@ class TrainBert(BaseTask):
 
         return datasets.Dataset.from_dict(
             {"id": ids, "text": texts, "labels": torch.Tensor(labels_as_matrix)}
-        ).with_format(
-            "torch",
-            device=device,
-        )
+        ).with_format("torch")
 
     def __load_tokenizer(self, base_model: str):
         """Load the tokenize"""
@@ -500,7 +496,7 @@ class TrainBert(BaseTask):
         self.df = self.__check_data(self.df, self.col_label, self.col_text)
         labels, label2id, id2label = self.__retrieve_labels(self.scheme_labels)
         self.ds = self.__transform_to_dataset(
-            self.training_kind, self.df, self.col_label, self.col_text, label2id, device
+            self.training_kind, self.df, self.col_label, self.col_text, label2id
         )
 
         tokenizer = self.__load_tokenizer(self.base_model)
