@@ -1,6 +1,5 @@
 from typing import Annotated
 
-import pandas as pd  # type: ignore[import]
 from fastapi import (
     APIRouter,
     Depends,
@@ -196,11 +195,13 @@ def predict(
                 raise Exception("External dataset prediction is only available for bert models")
 
         if kind == "bert":
-            if dataset_type=="external" and external_dataset is None: 
-                raise Exception("External dataset must be provided for external "
-                    "prediction")
-            if (dataset_type=="external" and
-                not project.data.get_path(external_dataset.filename).exists()):
+            if dataset_type == "external" and external_dataset is None:
+                raise Exception("External dataset must be provided for external prediction")
+            if (
+                dataset_type == "external"
+                and external_dataset is not None
+                and not project.data.get_path(external_dataset.filename).exists()
+            ):
                 raise HTTPException(
                     status_code=404,
                     detail=f"External dataset file {external_dataset.filename} not found",
@@ -217,14 +218,13 @@ def predict(
 
         if kind == "quick":
             if datasets is None:
-                raise Exception("Dataset parameter must be specified for quick "
-                    "model prediction")
+                raise Exception("Dataset parameter must be specified for quick model prediction")
             project.start_quick_model_prediction(
                 username=current_user.username,
                 dataset_type=dataset_type,
                 datasets=datasets,
                 scheme_name=scheme,
-                model_name=model_name
+                model_name=model_name,
             )
         orchestrator.log_action(
             current_user.username,
@@ -234,6 +234,7 @@ def predict(
     except Exception as e:
         print(f"ERROR in /models/predict\n{e}\n\n")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/models/bert/train", dependencies=[Depends(verified_user)])
 def post_bert(

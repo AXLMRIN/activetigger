@@ -49,20 +49,20 @@ from activetigger.datamodels import (
     QuickModelComputing,
     QuickModelInModel,
     StaticFileModel,
+    TextDatasetModel,
     UpdateComputing,
-    TextDatasetModel
 )
 from activetigger.db.manager import DatabaseManager
 from activetigger.features import Features
 from activetigger.functions import (
     clean_regex,
+    dichotomize,
     get_dir_size,
+    get_number_occurrences_per_label,
     regex_contains,
+    remove_labels_without_enough_annotations,
     sanitize_query_expression,
     slugify,
-    get_number_occurrences_per_label,
-    remove_labels_without_enough_annotations,
-    dichotomize
 )
 from activetigger.generation.generations import Generations
 from activetigger.languagemodels import LanguageModels
@@ -798,9 +798,7 @@ class Project:
                     filter_san.replace("QUERY=", ""),
                     allowed_columns=existing_cols_contexts,
                 )
-                f_regex = cast(
-                    pd.Series, df[existing_cols_contexts].eval(query_expr)
-                )
+                f_regex = cast(pd.Series, df[existing_cols_contexts].eval(query_expr))
             else:
                 f_regex = regex_contains(df["text"], filter_san, case=True, na=False)
             f = f & f_regex
@@ -872,9 +870,7 @@ class Project:
                 f_predicted = proba["prediction"] == next.label_prob
                 f_active = f & f_predicted
                 if f_active.sum() == 0:
-                    raise ValueError(
-                        f"No element predicted as '{next.label_prob}' available."
-                    )
+                    raise ValueError(f"No element predicted as '{next.label_prob}' available.")
                 ss_active = (
                     proba[f_active][next.label_prob]
                     .drop(next.history, errors="ignore")
@@ -1428,13 +1424,16 @@ class Project:
         # Sort multilabel/multiclass
         scheme = self.schemes.available()[bert.scheme]
         scheme_labels = scheme.labels
-        training_kind = scheme.kind # "multiclass" or "multilabel"
+        training_kind = scheme.kind  # "multiclass" or "multilabel"
         if training_kind not in ["multiclass", "multilabel"]:
-            raise Exception(f"Training does not support this type of scheme "
-                            f"(kind: {training_kind})")
+            raise Exception(
+                f"Training does not support this type of scheme (kind: {training_kind})"
+            )
 
         # management for multilabels / dichotomize
-        use_dichotomization = bert.dichotomize is not None and bert.dichotomize != "No dichotomization"
+        use_dichotomization = (
+            bert.dichotomize is not None and bert.dichotomize != "No dichotomization"
+        )
         if use_dichotomization:
             df, scheme_labels = dichotomize(df, "labels", bert.dichotomize)
             bert.name = f"{bert.name}_multilabel_on_{bert.dichotomize}"
@@ -1450,7 +1449,8 @@ class Project:
                 # force label counts to -1 to remove them  at the same time
                 label_counts[label_to_exclude] = -1
         df, scheme_labels = remove_labels_without_enough_annotations(
-            df, "labels", label_counts, bert.class_min_freq)
+            df, "labels", label_counts, bert.class_min_freq
+        )
         df = df[df["labels"].notna()]
 
         # balance the dataset based on the min class
@@ -1466,7 +1466,7 @@ class Project:
             user=username,
             scheme=bert.scheme,
             df=df,
-            training_kind = training_kind, 
+            training_kind=training_kind,
             scheme_labels=scheme_labels,
             col_text=df.columns[0],
             col_label=df.columns[1],
@@ -1479,7 +1479,7 @@ class Project:
             class_balance=bert.class_balance,
             class_min_freq=bert.class_min_freq,
             use_dichotomization=use_dichotomization,
-            label_for_dichotomization=bert.dichotomize if use_dichotomization else None
+            label_for_dichotomization=bert.dichotomize if use_dichotomization else None,
         )
         self.monitoring.register_process(
             process_name=process_id,
@@ -1488,20 +1488,23 @@ class Project:
             user_name=username,
         )
 
-    def start_language_model_prediction(self, 
+    def start_language_model_prediction(
+        self,
         username: str,
         dataset_type: str,
-        datasets: list[str]|None,
+        datasets: list[str] | None,
         scheme_name: str,
         model_name: str,
-        external_dataset: TextDatasetModel,
-        batch_size: int = 32
+        external_dataset: TextDatasetModel | None = None,
+        batch_size: int = 32,
     ) -> None:
         """
         Fetch all necessary data and launch a prediction process
         """
         # Retrieve relevant data
         if dataset_type == "external":
+            if external_dataset is None:
+                raise Exception("No external dataset available for prediction")
             df = None
             col_label = None
             datasets = None
@@ -1515,10 +1518,7 @@ class Project:
             if datasets is None:
                 raise Exception("No dataset available for prediction")
             df = self.schemes.get_scheme(
-                scheme=scheme_name, 
-                complete=True, 
-                datasets=datasets, 
-                id_external=True
+                scheme=scheme_name, complete=True, datasets=datasets, id_external=True
             )
             col_label = "labels"
             path_data = None
@@ -1526,10 +1526,11 @@ class Project:
             raise Exception(f"Dataset {dataset_type} not recognized")
 
         scheme_ = self.schemes.available()[scheme_name]
-        training_kind = scheme_.kind 
+        training_kind = scheme_.kind
         if training_kind not in ["multiclass", "multilabel"]:
-            raise Exception(f"Prediction does not support this type of scheme "
-                            f"(kind: {training_kind})")
+            raise Exception(
+                f"Prediction does not support this type of scheme (kind: {training_kind})"
+            )
         scheme_labels = scheme_.labels
         self.languagemodels.start_predicting_process(
             project_slug=self.name,
@@ -1544,15 +1545,15 @@ class Project:
             statistics=datasets,
             path_data=path_data,
             external_dataset=external_dataset,
-        ) 
+        )
 
     def start_quick_model_prediction(
-            self, 
-            username:str,
-            dataset_type : str,
-            datasets: list[str] | None, 
-            scheme_name: str,
-            model_name: str,
+        self,
+        username: str,
+        dataset_type: str,
+        datasets: list[str] | None,
+        scheme_name: str,
+        model_name: str,
     ) -> None:
         """
         Fetch all necessary data and launch prediction process

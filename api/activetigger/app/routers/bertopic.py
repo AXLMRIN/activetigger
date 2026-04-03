@@ -1,6 +1,6 @@
 from typing import Annotated
 
-import pandas as pd
+import pandas as pd  # type: ignore[import]
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from activetigger.app.dependencies import ProjectAction, get_project, test_rights, verified_user

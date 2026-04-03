@@ -200,7 +200,9 @@ def get_reconciliation_table(
     try:
         df, users, agreement_stats = project.schemes.get_reconciliation_table(scheme, dataset)
         return ReconciliationModel(
-            table=df.to_dict(orient="records"),
+            table=cast(
+                list[dict[str, str | dict[str, str | None] | None]], df.to_dict(orient="records")
+            ),
             users=users,
             **agreement_stats,
         )

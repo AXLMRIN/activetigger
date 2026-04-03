@@ -1,4 +1,4 @@
-import importlib
+import importlib.resources
 import logging
 import time
 from contextlib import asynccontextmanager
