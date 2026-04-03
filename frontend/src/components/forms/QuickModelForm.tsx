@@ -148,6 +148,17 @@ export const QuickModelForm: FC<QuickModelFormProps> = ({
         </a>
       )}
 
+      {kindScheme == 'multilabel' && (
+        <>
+          <label htmlFor="dichotomize">Dichotomize on the label</label>
+          <select id="dichotomize" {...register('dichotomize')}>
+            {Object.values(availableLabels).map((e) => (
+              <option key={e}>{e}</option>
+            ))}{' '}
+          </select>
+        </>
+      )}
+
       <details>
         <summary>Advanced parameters</summary>
 
@@ -157,16 +168,6 @@ export const QuickModelForm: FC<QuickModelFormProps> = ({
             <option key={e}>{e}</option>
           ))}{' '}
         </select>
-        {kindScheme == 'multilabel' && (
-          <>
-            <label htmlFor="dichotomize">Dichotomize on the label</label>
-            <select id="dichotomize" {...register('dichotomize')}>
-              {Object.values(availableLabels).map((e) => (
-                <option key={e}>{e}</option>
-              ))}{' '}
-            </select>
-          </>
-        )}
         {
           //generate_config(selectedQuickModel)
           (selectedModel == 'logistic-l2' && (

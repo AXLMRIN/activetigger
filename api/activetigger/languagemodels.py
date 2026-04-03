@@ -28,7 +28,7 @@ from activetigger.db.languagemodels import ModelsService
 from activetigger.db.manager import DatabaseManager
 from activetigger.functions import get_model_metrics
 from activetigger.queue_manager import Queue
-from activetigger.tasks.predict_bert import PredictBert
+from activetigger.tasks.predict_bert import PredictBertMultiClass
 from activetigger.tasks.train_bert import TrainBert
 
 
@@ -184,9 +184,13 @@ class LanguageModels:
         user: str,
         scheme: str,
         df: DataFrame,
+        training_kind: str,
+        scheme_labels: list[str],
         col_text: str,
         col_label: str,
         params: LMParametersModel,
+        use_dichotomization: bool,
+        label_for_dichotomization: str | None = None,
         base_model: str = "almanach/camembert-base",
         test_size: float = 0.2,
         num_min_annotations: int = 10,
@@ -204,11 +208,6 @@ class LanguageModels:
         # check the size of training data
         if len(df.dropna()) < num_min_annotations:
             raise Exception(f"Less than {num_min_annotations} elements annotated")
-
-        # check the number of elements
-        counts = df[col_label].value_counts()
-        if not (counts >= num_min_annotations_per_label).all():
-            raise Exception(f"Less than {num_min_annotations_per_label} elements per label")
 
         # name integrating the scheme & user + date
         current_date = datetime.now(timezone.utc)
@@ -229,6 +228,8 @@ class LanguageModels:
                 raise Exception("Not enough GPU memory available. Wait or reduce batch.")
 
         # launch as a independant process
+        if training_kind not in ["multilabel", "multiclass"]:
+            raise Exception("training_kind must be multilabel or multiclass")
         unique_id = self.queue.add_task(
             "training",
             project,
@@ -237,6 +238,8 @@ class LanguageModels:
                 project_slug=project,
                 model_name=model_name,
                 df=df.copy(deep=True),
+                training_kind=training_kind,
+                scheme_labels=scheme_labels,
                 col_label=col_label,
                 col_text=col_text,
                 base_model=base_model,
@@ -247,6 +250,8 @@ class LanguageModels:
                 auto_max_length=auto_max_length,
                 class_balance=class_balance,
                 class_min_freq=class_min_freq,
+                use_dichotomization=use_dichotomization,
+                label_for_dichotomization=label_for_dichotomization,
             ),
             queue="gpu",
         )
@@ -263,6 +268,7 @@ class LanguageModels:
                 unique_id=unique_id,
                 time=current_date,
                 kind="train_bert",
+                training_kind=training_kind,
                 status="training",
                 scheme=scheme,
                 dataset=None,
@@ -291,6 +297,8 @@ class LanguageModels:
         user: str,
         df: DataFrame | None,
         dataset: str,
+        training_kind: str,
+        scheme_labels: list[str],
         col_label: str | None = None,
         batch_size: int = 32,
         status: str = "predicting",
@@ -314,10 +322,12 @@ class LanguageModels:
         unique_id = self.queue.add_task(
             "prediction",
             project_slug,
-            PredictBert(
+            PredictBertMultiClass(
                 path=self.path.joinpath(name),
                 dataset=dataset,
                 df=df,
+                training_kind=training_kind,
+                scheme_labels=scheme_labels,
                 col_text="text",
                 col_label=col_label,
                 col_id_external="id_external",
@@ -338,6 +348,7 @@ class LanguageModels:
                 unique_id=unique_id,
                 time=datetime.now(timezone.utc),
                 kind="predict_bert",
+                training_kind=training_kind,
                 dataset=dataset,
                 status=status,
                 get_progress=self.get_progress(name, status=status),
@@ -569,6 +580,11 @@ class LanguageModels:
         metrics = get_model_metrics(self.path.joinpath(model_name))
         if metrics is None:
             metrics = {}
+
+        # TODO: delete this hotfix to ensure that previously trained models will not trigger errors
+        for key in metrics:
+            if "training_kind" not in metrics[key]:
+                metrics[key]["training_kind"] = "multiclass"
 
         return ModelInformationsModel(
             params=self.get_parameters(model_name),

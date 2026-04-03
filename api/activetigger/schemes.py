@@ -86,6 +86,11 @@ class SchemeCache:
             if pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
                 if df["timestamp"].dt.tz is None:
                     now = now.tz_localize(None)
+                # match the column's resolution (e.g. datetime64[s]) to avoid
+                # "Invalid value ... for dtype datetime64[s]" errors in pandas 2.x
+                col_reso = getattr(df["timestamp"].dtype, "unit", None)
+                if col_reso:
+                    now = now.as_unit(col_reso)
             else:
                 # column is object-typed (e.g. all NaN); convert to datetime first
                 df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
@@ -791,17 +796,6 @@ class Schemes:
             )
         except DBException as e:
             raise Exception from e
-
-    def dichotomize(self, annotation: str | None, label: str | None) -> str:
-        """
-        check if the label is in the annotation
-        current situation : separator |
-        """
-        if annotation is None:
-            raise Exception("No annotation")
-        if label is None:
-            raise Exception("No label")
-        return label if label in annotation.split("|") else "not-" + label
 
     def add_file_annotations(self, annotationsdata: AnnotationsDataModel, user: str) -> None:
         """
