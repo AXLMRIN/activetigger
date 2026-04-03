@@ -296,7 +296,7 @@ class PredictBertMultiClass(BaseTask):
                     [int(label in split_annotation(annotation)) for label in label2id]
                     for annotation in pred.loc[filter_oos, "prediction"].copy()
                 ])
-                metrics[dataset] = get_metrics_multilabel(
+                metrics["outofsample"] = get_metrics_multilabel(
                     Y_true = y_true,
                     Y_pred = y_pred,
                     id2label=id2label,

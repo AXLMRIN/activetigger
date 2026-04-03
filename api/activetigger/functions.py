@@ -433,7 +433,7 @@ def get_metrics_multiclass(
 def get_metrics_multilabel(
     Y_true: np.ndarray,
     Y_pred: np.ndarray,
-    id2label : dict[int:str],
+    id2label : dict[int, str],
     texts: pd.Series | None = None,
     decimals: int = 3,
 ) -> MLStatisticsModel:
@@ -459,7 +459,7 @@ def get_metrics_multilabel(
         }
         precision_label[label] = round(precision_score(**parameters) , decimals)
         recall_label[label]    = round(recall_score(**parameters)    , decimals)
-        f1_label[label]        = round(precision_score(**parameters) , decimals)
+        f1_label[label]        = round(f1_score(**parameters)        , decimals)
         
         dummy_labels = [label, f"not-{label}"]
         confusion[label] = confusion_matrix(
@@ -490,7 +490,7 @@ def get_metrics_multilabel(
     accuracy = round(accuracy, decimals)
 
     # Create a table of false predictions --- --- --- --- --- --- --- --- --- --
-    filter_false_prediction = (Y_true != Y_pred).all(axis = 1)
+    filter_false_prediction = (Y_true != Y_pred).any(axis=1)
     if texts is not None:
         # Need to reconstruct the labels, for now they are matrices [[1,0,0], [1,1,0], ...]
         Y_true_as_series = (
@@ -624,14 +624,14 @@ def rejoin_annotation(list_of_annotations : list[str]) -> str|pd._libs.missing.N
     return pd.NA
 
 
-def matrix_to_label(row : list[int], id2label: dict[int:str]) -> str:
+def matrix_to_label(row : list[int], id2label: dict[int, str]) -> str:
     """
     For a row of labels: [1,0,1] => ["label1", "label3"]
     return the labels associated to the columns with a 1
     """
     return [id2label[i] for i,value in enumerate(row) if value == 1]
 
-def get_number_occurrences_per_label(annotations: pd.Series, labels: list[str]) -> dict[str:int]:
+def get_number_occurrences_per_label(annotations: pd.Series, labels: list[str]) -> dict[str, int]:
     """
     For all labels in annotations ("labelX" if multiclass, "labelX|labelY" if
     multilabel) count the number of occurences.

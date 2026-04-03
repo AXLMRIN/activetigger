@@ -603,9 +603,7 @@ class Project:
 
         # management for multilabels / dichotomize
         if quickmodel.dichotomize is not None:
-            df_scheme["labels"] = df_scheme["labels"].apply(
-                lambda x: self.schemes.dichotomize(x, quickmodel.dichotomize)
-            )
+            df_scheme, _ = dichotomize(df_scheme, "labels", quickmodel.dichotomize)
 
         # test for a minimum of annotated elements
         counts = df_scheme["labels"].value_counts()

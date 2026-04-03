@@ -199,8 +199,8 @@ def predict(
             if dataset_type=="external" and external_dataset is None: 
                 raise Exception("External dataset must be provided for external "
                     "prediction")
-            if (dataset_type=="external" and 
-                project.data.get_path(external_dataset.filename).exists()): 
+            if (dataset_type=="external" and
+                not project.data.get_path(external_dataset.filename).exists()):
                 raise HTTPException(
                     status_code=404,
                     detail=f"External dataset file {external_dataset.filename} not found",

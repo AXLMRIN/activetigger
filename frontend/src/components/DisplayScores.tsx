@@ -113,14 +113,10 @@ export const DisplayScores: FC<DisplayScoresProps> = ({
         Macro F1 score on {dataset.replace('_scores', '')} set : <b>{scores.f1_macro}</b>
       </span>
 
-      {viewTable ? (
-        scores.training_kind === 'multilabel' ? (
-          <>multilabel</>
-        ) : (
-          <DisplayTableStatistics scores={scores} title={title} />
-        )
-      ) : scores.training_kind === 'multilabel' ? (
+      {scores.training_kind === 'multilabel' ? (
         <DisplayTableStatisticsReactMultilabel scores={scores} title={title} />
+      ) : viewTable ? (
+        <DisplayTableStatistics scores={scores} title={title} />
       ) : (
         <DisplayTableStatisticsReact scores={scores} title={title} />
       )}
