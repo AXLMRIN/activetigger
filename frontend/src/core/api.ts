@@ -304,7 +304,7 @@ export function usePredictOnDataset() {
           query: {
             project_slug: projectSlug,
             model_name: model_name,
-            dataset: 'external',
+            dataset_type: 'external',
             scheme: scheme,
             kind: 'bert',
           },
@@ -1305,7 +1305,7 @@ export function useComputeModelPrediction(projectSlug: string | null, batchSize:
             query: {
               project_slug: projectSlug,
               model_name: model_name,
-              dataset: dataset,
+              dataset_type: dataset,
               batch_size: batchSize,
               scheme: scheme,
               kind: kind,
