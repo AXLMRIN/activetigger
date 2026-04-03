@@ -27,7 +27,15 @@ from transformers import (  # type: ignore[import]  # type: ignore[import]
 
 from activetigger.config import config
 from activetigger.datamodels import EventsModel, LMParametersModel, MLStatisticsModel
-from activetigger.functions import get_device, get_metrics_multiclass
+from activetigger.functions import (
+    activate_probs,
+    get_device,
+    get_metrics_multiclass,
+    get_metrics_multilabel,
+    logits_to_probs,
+    matrix_to_label,
+    split_annotation,
+)
 from activetigger.monitoring import TaskTimer
 from activetigger.tasks.base_task import BaseTask
 from activetigger.tasks.utils import length_after_tokenizing, retrieve_model_max_length
@@ -113,7 +121,7 @@ class CustomTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
 
 
-class TrainBertMultiClass(BaseTask):
+class TrainBert(BaseTask):
     """
     Class to train a bert model
 
@@ -142,15 +150,15 @@ class TrainBertMultiClass(BaseTask):
         project_slug: str,
         model_name: str,
         df: DataFrame | datasets.Dataset,
-        training_kind : str,
-        scheme_labels : list[str],
-        use_dichotomization : bool,
+        training_kind: str,
+        scheme_labels: list[str],
+        use_dichotomization: bool,
         col_text: str,
         col_label: str,
         base_model: str,
         params: LMParametersModel,
         test_size: float,
-        label_for_dichotomization : str|None = None,
+        label_for_dichotomization: str | None = None,
         event: Optional[multiprocessing.synchronize.Event] = None,
         unique_id: Optional[str] = None,
         loss: Optional[str] = "cross_entropy",
@@ -166,16 +174,23 @@ class TrainBertMultiClass(BaseTask):
         self.name = model_name
         df.index.name = "id"
         self.df = df
-        if training_kind not in ["multiclass"]:
-            raise ValueError((f"TrainBERTMultiClass only works for multiclass "
-                f"but you set training_kind = {training_kind}"))
+        if training_kind not in ["multiclass", "multilabel"]:
+            raise ValueError(
+                (
+                    f"TrainBERT only works for multiclass and "
+                    f"multilabel but you set training_kind = {training_kind}"
+                )
+            )
         self.training_kind = training_kind
         if len(scheme_labels) != len(set(scheme_labels)):
-            raise ValueError((f"Labels in your scheme are not unique.\n"
-                f"Labels provided : {scheme_labels}"))
-        self.scheme_labels = scheme_labels
+            raise ValueError(
+                (f"Labels in your scheme are not unique.\nLabels provided : {scheme_labels}")
+            )
+        if use_dichotomization:
+            raise ValueError("Dichotomization not supported in multilabel.")
         self.use_dichotomization = use_dichotomization
         self.label_for_dichotomization = label_for_dichotomization
+        self.scheme_labels = scheme_labels
         self.col_text = col_text
         self.col_label = col_label
         self.base_model = base_model
@@ -225,40 +240,61 @@ class TrainBertMultiClass(BaseTask):
             print(f"Missing texts - reducing training data to {len(df)}")
 
         # Test that all labels in the label column appear in the scheme labels
-        condition = (
-            df[col_label]
-            .apply(lambda annotation : annotation in self.scheme_labels)
+        condition = df[col_label].apply(
+            lambda annotation: np.isin(split_annotation(annotation), self.scheme_labels).all()
         )
         if (~condition).sum() > 0:
             df = df[condition]
-            self.logger.info(f"Labels not recognised - reducing training data to {len(df)}")
+            self.logger.info(f"Labels unrecognised - reducing training data to {len(df)}")
             print(f"Labels not recognised - reducing training data to {len(df)}")
 
         return df
 
-    def __retrieve_labels(self, df: pd.DataFrame, col_label):
-        # formatting data
-        # alphabetical order
-        labels = sorted(list(df[col_label].dropna().unique()))
-        print("LABELS : ", labels)
-        if len(labels) < 2:
+    def __retrieve_labels(self, scheme_labels):
+        if len(scheme_labels) < 2:
             raise ValueError(
-                "Not enough classes. Either you excluded classes or there are not enough annotations."
+                "Not enough classes. Either you excluded classes or "
+                "there are not enough annotations."
             )
 
-        label2id = {j: i for i, j in enumerate(labels)}
-        id2label = {i: j for i, j in enumerate(labels)}
-        return labels, label2id, id2label
+        label2id = {j: i for i, j in enumerate(scheme_labels)}
+        id2label = {i: j for i, j in enumerate(scheme_labels)}
+        return scheme_labels, label2id, id2label
 
     def __transform_to_dataset(
-        self, df: pd.DataFrame, col_label: str, col_text: str, label2id: dict[str, int]
+        self,
+        training_kind: str,
+        df: pd.DataFrame,
+        col_label: str,
+        col_text: str,
+        label2id: dict[str, int],
+        device: torch.device,
     ) -> datasets.Dataset:
         """Transform the dataframe into a dataset with the right format for
         training"""
-        df = df.copy()
-        df["text"] = df[col_text]
-        df["labels"] = df[col_label].copy().replace(label2id)
-        return datasets.Dataset.from_pandas(df[["text", "labels"]])
+        ids = df.reset_index()["id"].copy().to_list()
+        texts = df[col_text].copy().to_list()
+        if training_kind == "multiclass":
+            print("Preprocess multiclass")
+            labels_as_list = df[col_label].copy().replace(label2id)
+            labels_as_matrix = [
+                [int(id_label == i_column) for i_column in range(len(label2id))]
+                for id_label in labels_as_list
+            ]
+        elif training_kind == "multilabel":
+            print("Preprocess multilabel")
+            annotations_as_list = df[col_label].copy()
+            labels_as_matrix = [
+                [int(label in split_annotation(annotation)) for label in label2id]
+                for annotation in annotations_as_list
+            ]
+
+        return datasets.Dataset.from_dict(
+            {"id": ids, "text": texts, "labels": torch.Tensor(labels_as_matrix)}
+        ).with_format(
+            "torch",
+            device=device,
+        )
 
     def __load_tokenizer(self, base_model: str):
         """Load the tokenize"""
@@ -283,26 +319,29 @@ class TrainBertMultiClass(BaseTask):
         # cap max_length
         max_length = min(original_max_length, base_model_max_length)
         # evaluate the proportion of elements truncated
-        percentage_truncated = int(
-            100 * (texts.apply(get_n_tokens).dropna() > max_length).mean()
-        )
+        percentage_truncated = int(100 * (texts.apply(get_n_tokens).dropna() > max_length).mean())
 
         if adapt:
-            tokenizing_function = lambda e: tokenizer(
-                e["text"],
-                truncation=True,
-                padding=True,
-                return_tensors="pt",
-                max_length=int(max_length),
-            )
+
+            def tokenizing_function(e):
+                return tokenizer(
+                    e["text"],
+                    truncation=True,
+                    padding=True,
+                    return_tensors="pt",
+                    max_length=int(max_length),
+                )
         else:
-            tokenizing_function = lambda e: tokenizer(
-                e["text"],
-                truncation=True,
-                padding="max_length",
-                return_tensors="pt",
-                max_length=max_length,
-            )
+
+            def tokenizing_function(e):
+                return tokenizer(
+                    e["text"],
+                    truncation=True,
+                    padding="max_length",
+                    return_tensors="pt",
+                    max_length=max_length,
+                )
+
         return tokenizing_function, percentage_truncated
 
     def __load_trainer(
@@ -344,7 +383,7 @@ class TrainBertMultiClass(BaseTask):
             eval_steps=eval_steps if has_test else None,
             save_strategy="best" if has_test else "epoch",
             metric_for_best_model="eval_loss" if has_test else None,
-            save_steps=int(eval_steps) if has_test else None,
+            save_steps=float(eval_steps) if has_test else 500,
             logging_steps=int(eval_steps),
             do_eval=has_test,
             greater_is_better=False if has_test else None,
@@ -362,16 +401,16 @@ class TrainBertMultiClass(BaseTask):
                 eval_dataset=eval_dataset,
                 callbacks=[callback],
             )
-        elif loss == "weighted_cross_entropy":
-            print("Using weighted cross entropy loss - EXPERIMENTAL")
-            trainer = CustomTrainer(
-                model=bert_model,
-                args=training_args,
-                train_dataset=ds["train"],
-                eval_dataset=eval_dataset,
-                callbacks=[callback],
-                class_weights=compute_class_weights(ds["train"], label_key="labels"),
-            )
+        # elif loss == "weighted_cross_entropy":
+        #     print("Using weighted cross entropy loss - EXPERIMENTAL")
+        #     trainer = CustomTrainer(
+        #         model=bert_model,
+        #         args=training_args,
+        #         train_dataset=ds["train"],
+        #         eval_dataset=eval_dataset,
+        #         callbacks=[callback],
+        #         class_weights=compute_class_weights(ds["train"], label_key="labels"),
+        #     )
         else:
             raise ValueError(f"Loss function {loss} not recognized.")
 
@@ -403,15 +442,15 @@ class TrainBertMultiClass(BaseTask):
 
         # Save results for the train and test set
         (
-            df_train_results
-            [[c for c in df_train_results.columns if c not in ['input_ids', 'attention_mask']]]
-            .to_csv(current_path.joinpath("train_dataset_eval.csv"))
+            df_train_results[
+                [c for c in df_train_results.columns if c not in ["input_ids", "attention_mask"]]
+            ].to_csv(current_path.joinpath("train_dataset_eval.csv"))
         )
         if df_test_results is not None:
             (
-                df_test_results
-                [[c for c in df_test_results.columns if c not in ['input_ids', 'attention_mask']]]
-                .to_csv(current_path.joinpath("test_dataset_eval.csv"))
+                df_test_results[
+                    [c for c in df_test_results.columns if c not in ["input_ids", "attention_mask"]]
+                ].to_csv(current_path.joinpath("test_dataset_eval.csv"))
             )
         training_data.to_parquet(current_path.joinpath("training_data.parquet"))
 
@@ -455,8 +494,10 @@ class TrainBertMultiClass(BaseTask):
         device = get_device()
 
         self.df = self.__check_data(self.df, self.col_label, self.col_text)
-        labels, label2id, id2label = self.__retrieve_labels(self.df, self.col_label)
-        self.ds = self.__transform_to_dataset(self.df, self.col_label, self.col_text, label2id)
+        labels, label2id, id2label = self.__retrieve_labels(self.scheme_labels)
+        self.ds = self.__transform_to_dataset(
+            self.training_kind, self.df, self.col_label, self.col_text, label2id, device
+        )
 
         tokenizer = self.__load_tokenizer(self.base_model)
         tokenizing_function, percentage_truncated = self.__cap_tokenizer_max_length(
@@ -483,7 +524,10 @@ class TrainBertMultiClass(BaseTask):
             id2label=id2label,
             label2id=label2id,
             trust_remote_code=True,
-        )
+            problem_type="multi_label_classification"
+            if self.training_kind == "multilabel"
+            else None,
+        ).to(device=device)
         bert_model.config.use_cache = False
         self.logger.info(f"Model loaded on {bert_model.device}")
         print(f"Model loaded on {bert_model.device}")
@@ -505,30 +549,87 @@ class TrainBertMultiClass(BaseTask):
 
             # Compute the metrics
             df_train_results = self.ds["train"].to_pandas().set_index("id")
-            df_train_results["true_label"] = [id2label[i] for i in predictions_train.label_ids]
-            df_train_results["predicted_label"] = [
-                id2label[i] for i in np.argmax(predictions_train.predictions, axis=1)
+
+            df_train_results["true_label-matrix"] = predictions_train.label_ids.tolist()
+            df_train_results["true_label"] = [
+                "|".join(matrix_to_label(row, id2label)) for row in predictions_train.label_ids
             ]
-            metrics_train = get_metrics_multiclass(
-                Y_true=df_train_results["true_label"],
-                Y_pred=df_train_results["predicted_label"],
-                texts=df_train_results["text"],
-                id2label=id2label,
-            )
+
+            y_prob_pred = logits_to_probs(predictions_train.predictions, self.training_kind)
+
+            if self.training_kind == "multiclass":
+                labels_predicted = activate_probs(
+                    probs=y_prob_pred, strategy="max", force_max_1_per_row=True
+                )
+            elif self.training_kind == "multilabel":
+                # threshold = find_best_threshold(
+                #     y_true = predictions_train.label_ids,
+                #     y_prob_pred = y_prob_pred,
+                # )
+                threshold = 0.5  # Force threshold = 0.5
+                labels_predicted = activate_probs(
+                    probs=y_prob_pred,
+                    strategy="threshold",
+                    threshold=threshold,
+                    force_max_1_per_row=False,
+                )
+
+            df_train_results["predicted_label-matrix"] = y_prob_pred.tolist()
+            df_train_results["predicted_label"] = [
+                "|".join(matrix_to_label(row, id2label)) for row in labels_predicted
+            ]
+
+            if self.training_kind == "multiclass":
+                metrics_train = get_metrics_multiclass(
+                    Y_true=df_train_results["true_label"],
+                    Y_pred=df_train_results["predicted_label"],
+                    texts=df_train_results["text"],
+                    id2label=id2label,
+                )
+            elif self.training_kind == "multilabel":
+                metrics_train = get_metrics_multilabel(
+                    Y_true=predictions_train.label_ids,
+                    Y_pred=labels_predicted,
+                    texts=df_train_results["text"],
+                    id2label=id2label,
+                )
 
             if "test" in self.ds:
                 predictions_test = trainer.predict(self.ds["test"])  # type: ignore[attr-defined]
                 df_test_results = self.ds["test"].to_pandas().set_index("id")
-                df_test_results["true_label"] = [id2label[i] for i in predictions_test.label_ids]
-                df_test_results["predicted_label"] = [
-                    id2label[i] for i in np.argmax(predictions_test.predictions, axis=1)
+
+                df_test_results["true_label-matrix"] = predictions_test.label_ids.tolist()
+                df_test_results["true_label"] = [
+                    "|".join(matrix_to_label(row, id2label)) for row in predictions_test.label_ids
                 ]
-                metrics_test = get_metrics_multiclass(
-                    Y_true=df_test_results["true_label"],
-                    Y_pred=df_test_results["predicted_label"],
-                    texts=df_test_results["text"],
-                    id2label=id2label,
-                )
+
+                y_prob_pred = logits_to_probs(predictions_test.predictions, kind=self.training_kind)
+                if self.training_kind == "multiclass":
+                    y_label_pred = activate_probs(
+                        y_prob_pred, strategy="max", force_max_1_per_row=True
+                    )
+                else:
+                    y_label_pred = activate_probs(y_prob_pred, threshold, strategy="threshold")
+                df_test_results["predicted_label-matrix"] = y_prob_pred.tolist()
+                df_test_results["predicted_label"] = [
+                    "|".join(matrix_to_label(row, id2label)) for row in y_label_pred
+                ]
+
+                if self.training_kind == "multiclass":
+                    metrics_test = get_metrics_multiclass(
+                        Y_true=df_test_results["true_label"],
+                        Y_pred=df_test_results["predicted_label"],
+                        texts=df_test_results["text"],
+                        id2label=id2label,
+                    )
+                elif self.training_kind == "multilabel":
+                    metrics_test = get_metrics_multilabel(
+                        Y_true=predictions_test.label_ids,
+                        Y_pred=y_label_pred,
+                        texts=df_test_results["text"],
+                        id2label=id2label,
+                    )
+
             else:
                 df_test_results = None
                 metrics_test = None
@@ -538,11 +639,11 @@ class TrainBertMultiClass(BaseTask):
             params_to_save = self.params.model_dump()
             params_to_save.update(
                 {
-                    "training_kind" : "multiclass",
-                    "labels": labels,
+                    "training_kind": self.training_kind,
+                    "test_size": self.test_size,
+                    "threshold": threshold if self.training_kind == "multilabel" else None,
                     "use_dichotomization": self.use_dichotomization,
                     "label_for_dichotomization": self.label_for_dichotomization,
-                    "test_size": self.test_size,
                     "base_model": self.base_model,
                     "n_train": len(self.ds["train"]),
                     "max_length": self.max_length,

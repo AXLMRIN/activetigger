@@ -14,8 +14,6 @@ import pandas as pd  # type: ignore[import]
 import regex
 import spacy
 import torch
-from torch import Tensor
-from torch.nn import Sigmoid
 from cryptography.fernet import Fernet
 from pandas import Series
 from sklearn.metrics import (  # type: ignore[import]
@@ -27,6 +25,8 @@ from sklearn.metrics import (  # type: ignore[import]
 )
 from sklearn.preprocessing import OneHotEncoder  # type: ignore[import]
 from slugify import slugify as python_slugify  # type: ignore[import]
+from torch import Tensor
+from torch.nn import Sigmoid
 
 from activetigger.config import config
 from activetigger.datamodels import GpuInformationModel, MLStatisticsModel
@@ -196,8 +196,8 @@ def sanitize_query_expression(expr: str, allowed_columns: list[str]) -> str:
 
     Raises ValueError if the expression contains disallowed tokens.
     """
-    import re
     import keyword
+    import re
 
     expr = expr.strip()
     if not expr:
@@ -279,7 +279,7 @@ def decrypt(text: str | None, secret_key: str | None) -> str:
     return decrypted_token.decode()
 
 
-def logits_to_probs(logits : np.ndarray, kind: str) -> np.ndarray:
+def logits_to_probs(logits: np.ndarray, kind: str) -> np.ndarray:
     """
     Transform the logit to probabilities using the sigmoid
     """
@@ -287,19 +287,21 @@ def logits_to_probs(logits : np.ndarray, kind: str) -> np.ndarray:
         sigm = Sigmoid()
         return sigm(Tensor(logits)).numpy()
     elif kind == "multiclass":
-        return  Tensor(logits).softmax(1).numpy()
+        return Tensor(logits).softmax(1).numpy()
     else:
-        raise Exception(f"logits_to_probs only accepts type = \"multilabel\" or "
-                        f"\"multiclass\" (received:{kind})")
+        raise Exception(
+            f'logits_to_probs only accepts type = "multilabel" or "multiclass" (received:{kind})'
+        )
+
 
 def activate_probs(
-        probs : np.ndarray, 
-        threshold : float = 0.5, 
-        strategy: str = "threshold",
-        force_max_1_per_row : bool = False,
-    ) -> np.ndarray:
+    probs: np.ndarray,
+    threshold: float = 0.5,
+    strategy: str = "threshold",
+    force_max_1_per_row: bool = False,
+) -> np.ndarray:
     """
-    If strategy = "threshold", use threshold to activate a probability matrix, 
+    If strategy = "threshold", use threshold to activate a probability matrix,
     if strategy = "max" use the maximum probability instead
     """
     if strategy == "threshold":
@@ -307,43 +309,47 @@ def activate_probs(
         label_prediction[np.where(probs >= threshold)] = 1
     elif strategy == "max":
         label_prediction = np.zeros(probs.shape)
-        max_per_row = np.max(probs, axis = 1).reshape(-1, 1)
-        label_prediction[np.where((probs-max_per_row) >= 0)] = 1
+        max_per_row = np.max(probs, axis=1).reshape(-1, 1)
+        label_prediction[np.where((probs - max_per_row) >= 0)] = 1
     else:
         raise ValueError(f"Strategy ({strategy})not supported")
     if force_max_1_per_row:
-        # sanitize, if equality 
-        for iRow,row in enumerate(label_prediction):
+        # sanitize, if equality
+        for iRow, row in enumerate(label_prediction):
             if sum(row) > 1:
                 argmax = np.argmax(row)
-                label_prediction[iRow,:] = 0
-                label_prediction[iRow,argmax] = 1
+                label_prediction[iRow, :] = 0
+                label_prediction[iRow, argmax] = 1
     return label_prediction
-            
 
-def find_best_threshold(y_true: pd.Series, y_prob_pred: pd.Series) -> tuple[float,np.ndarray,np.ndarray]:  
+
+def find_best_threshold(
+    y_true: pd.Series, y_prob_pred: pd.Series
+) -> tuple[float, np.ndarray, np.ndarray]:
     """
-    Find the best threshold using Precision-Recall curve and return the probabilities 
+    Find the best threshold using Precision-Recall curve and return the probabilities
     as well as the activated matrix
     https://www.geeksforgeeks.org/machine-learning/how-to-use-scikit-learns-tunedthresholdclassifiercv-for-threshold-optimization/
     """
     if y_true.shape != y_prob_pred.shape:
-        raise ValueError(f"find_best_threshold: Shape missmatch "
-            f"{y_true.shape}!={y_prob_pred.shape}")
+        raise ValueError(
+            f"find_best_threshold: Shape missmatch {y_true.shape}!={y_prob_pred.shape}"
+        )
 
     thresholds = list(set(y_prob_pred.reshape(-1)))
     best_threshold, best_f1 = -1, -1
     for t in thresholds:
-        y_pred = activate_probs(y_prob_pred,threshold=t, strategy="threshold")
-        f1 = f1_score(y_true=y_true, y_pred=y_pred, average='macro', zero_division=1)
+        y_pred = activate_probs(y_prob_pred, threshold=t, strategy="threshold")
+        f1 = f1_score(y_true=y_true, y_pred=y_pred, average="macro", zero_division=1)
         if f1 > best_f1:
             best_f1 = float(f1)
             best_threshold = float(t)
     return best_threshold
 
+
 def get_metrics_multiclass(
-    Y_true: pd.Series,
-    Y_pred: pd.Series,
+    Y_true: pd.Series | np.ndarray,
+    Y_pred: pd.Series | np.ndarray,
     id2label: list[str] | None = None,
     texts: pd.Series | None = None,
     decimals: int = 3,
@@ -430,10 +436,11 @@ def get_metrics_multiclass(
     )
     return statistics
 
+
 def get_metrics_multilabel(
     Y_true: np.ndarray,
     Y_pred: np.ndarray,
-    id2label : dict[int, str],
+    id2label: dict[int, str],
     texts: pd.Series | None = None,
     decimals: int = 3,
 ) -> MLStatisticsModel:
@@ -449,25 +456,27 @@ def get_metrics_multilabel(
     f1_label = {}
     recall_label = {}
     confusion = {}
-    dict_of_tables : dict[str:pd.DataFrame] = {}
-    for id,label in id2label.items():
+    dict_of_tables: dict[str : pd.DataFrame] = {}
+    for id, label in id2label.items():
         parameters = {
-            "y_true": Y_true[:,id], 
-            "y_pred": Y_pred[:,id], 
-            "average": "macro", 
+            "y_true": Y_true[:, id],
+            "y_pred": Y_pred[:, id],
+            "average": "macro",
             "zero_division": 1,
         }
-        precision_label[label] = round(precision_score(**parameters) , decimals)
-        recall_label[label]    = round(recall_score(**parameters)    , decimals)
-        f1_label[label]        = round(f1_score(**parameters)        , decimals)
-        
+        precision_label[label] = round(precision_score(**parameters), decimals)
+        recall_label[label] = round(recall_score(**parameters), decimals)
+        f1_label[label] = round(f1_score(**parameters), decimals)
+
         dummy_labels = [label, f"not-{label}"]
         confusion[label] = confusion_matrix(
-            y_true = [label if y == 1 else f'not-{label}' for y in Y_true[:,id]], 
-            y_pred = [label if y == 1 else f'not-{label}' for y in Y_pred[:,id]],
-            labels = dummy_labels
+            y_true=[label if y == 1 else f"not-{label}" for y in Y_true[:, id]],
+            y_pred=[label if y == 1 else f"not-{label}" for y in Y_pred[:, id]],
+            labels=dummy_labels,
         )
-        dict_of_tables[label] = pd.DataFrame(confusion[label], index=dummy_labels, columns=dummy_labels)
+        dict_of_tables[label] = pd.DataFrame(
+            confusion[label], index=dummy_labels, columns=dummy_labels
+        )
         dict_of_tables[label]["Total"] = dict_of_tables[label].sum(axis=1)
         dict_of_tables[label] = dict_of_tables[label].T
         dict_of_tables[label]["Total"] = dict_of_tables[label].sum(axis=1)
@@ -525,7 +534,7 @@ def get_metrics_multilabel(
         f1_label=f1_label,
         precision_label=precision_label,
         recall_label=recall_label,
-        confusion_matrix=[[]], # Unused later, table is used instead
+        confusion_matrix=[[]],  # Unused later, table is used instead
         f1_weighted=f1_weighted,
         f1_macro=f1_macro,
         f1_micro=f1_micro,
@@ -533,11 +542,12 @@ def get_metrics_multilabel(
         accuracy=accuracy,
         false_predictions=false_prediction,
         table=cast(
-            dict[str, Any], 
-            {key:table.to_dict(orient="split") for key, table in dict_of_tables.items()}
+            dict[str, Any],
+            {key: table.to_dict(orient="split") for key, table in dict_of_tables.items()},
         ),
     )
     return statistics
+
 
 def get_dir_size(path: str = ".") -> float:
     """
@@ -598,7 +608,8 @@ def get_model_metrics(path_model: Path) -> dict | None:
 
     return scores
 
-def split_annotation(annotation:str) -> list[str]|pd._libs.missing.NAType:
+
+def split_annotation(annotation: str) -> list[str] | pd._libs.missing.NAType:
     """
     Generalise the annoation splitting for multilabel
     annotation : label = multiclass  -> return ["label"]
@@ -610,26 +621,28 @@ def split_annotation(annotation:str) -> list[str]|pd._libs.missing.NAType:
         return annotation.split("|")
     else:
         return pd.NA
-    
-def rejoin_annotation(list_of_annotations : list[str]) -> str|pd._libs.missing.NAType:
+
+
+def rejoin_annotation(list_of_annotations: list[str]) -> str | pd._libs.missing.NAType:
     """
     the opposite of split_annotation
     if list of annotations is not a list of strings, return np.NaN
     """
     if isinstance(list_of_annotations, list):
-        if (len(list_of_annotations)>0 and
-            all([isinstance(annotation, str) for annotation in list_of_annotations])        
+        if len(list_of_annotations) > 0 and all(
+            [isinstance(annotation, str) for annotation in list_of_annotations]
         ):
             return "|".join(list_of_annotations)
     return pd.NA
 
 
-def matrix_to_label(row : list[int], id2label: dict[int, str]) -> str:
+def matrix_to_label(row: list[int], id2label: dict[int, str]) -> str:
     """
     For a row of labels: [1,0,1] => ["label1", "label3"]
     return the labels associated to the columns with a 1
     """
-    return [id2label[i] for i,value in enumerate(row) if value == 1]
+    return [id2label[i] for i, value in enumerate(row) if value == 1]
+
 
 def get_number_occurrences_per_label(annotations: pd.Series, labels: list[str]) -> dict[str, int]:
     """
@@ -639,19 +652,16 @@ def get_number_occurrences_per_label(annotations: pd.Series, labels: list[str]) 
     n_occurrences = {}
     for label in labels:
         n_occurrences[label] = int(
-            annotations
-            .apply(split_annotation)
+            annotations.apply(split_annotation)
             .apply(lambda list_annotation: label in list_annotation)
             .sum()
         )
     return n_occurrences
 
+
 def remove_labels_without_enough_annotations(
-        df : pd.DataFrame, 
-        col_label : str,
-        label_counts: list[str], 
-        class_min_freq: int
-    ) -> tuple[pd.DataFrame,list[str]]:
+    df: pd.DataFrame, col_label: str, label_counts: list[str], class_min_freq: int
+) -> tuple[pd.DataFrame, list[str]]:
     """
     For each row, remove annotations containing classes with not enough labels
     and remove rows that do not contain annotations
@@ -660,12 +670,10 @@ def remove_labels_without_enough_annotations(
     scheme_labels = []
     for label in label_counts:
         if label_counts[label] < class_min_freq:
-            # Each iteration, split the annotations into list of annotations and 
+            # Each iteration, split the annotations into list of annotations and
             # rejoin the annotations without a given label
-            annotations = (
-                annotations
-                .apply(split_annotation)
-                .apply(lambda LoA: rejoin_annotation([A for A in LoA if A != label]))
+            annotations = annotations.apply(split_annotation).apply(
+                lambda LoA: rejoin_annotation([A for A in LoA if A != label])
             )
         else:
             scheme_labels += [label]
@@ -674,27 +682,29 @@ def remove_labels_without_enough_annotations(
     return df, scheme_labels
 
 
-def dichotomize(df: pd.DataFrame, label_col : str, label_for_dichotomization: str) -> tuple[pd.DataFrame, list[str]]:
+def dichotomize(
+    df: pd.DataFrame, label_col: str, label_for_dichotomization: str
+) -> tuple[pd.DataFrame, list[str]]:
     """
-    dichotomize labels accordint to the provided label, return the updated label 
+    dichotomize labels accordint to the provided label, return the updated label
     scheme as well as the dichotomized dataframe
     """
 
     annotations = df[label_col].copy()
 
-    def binarize(list_of_annotations : list[str]|pd._libs.missing.NAType
-        )->bool|pd._libs.missing.NAType:
-        if isinstance(list_of_annotations,list):
+    def binarize(
+        list_of_annotations: list[str] | pd._libs.missing.NAType,
+    ) -> bool | pd._libs.missing.NAType:
+        if isinstance(list_of_annotations, list):
             return label_for_dichotomization in list_of_annotations
         else:
             return pd.NA
+
     annotations = (
-        annotations
-        .apply(split_annotation)
+        annotations.apply(split_annotation)
         .apply(binarize)
         .replace({True: label_for_dichotomization, False: f"not-{label_for_dichotomization}"})
     )
     df[label_col] = annotations
-    new_scheme_labels = [label_for_dichotomization, f"not-{label_for_dichotomization}"] 
+    new_scheme_labels = [label_for_dichotomization, f"not-{label_for_dichotomization}"]
     return df, new_scheme_labels
-    

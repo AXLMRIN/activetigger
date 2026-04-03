@@ -23,15 +23,13 @@ from activetigger.datamodels import (
     ModelScoresModel,
     StaticFileModel,
     TextDatasetModel,
-    MLStatisticsModel,
 )
 from activetigger.db.languagemodels import ModelsService
 from activetigger.db.manager import DatabaseManager
 from activetigger.functions import get_model_metrics
 from activetigger.queue_manager import Queue
 from activetigger.tasks.predict_bert import PredictBertMultiClass
-from activetigger.tasks.train_bert import TrainBertMultiClass
-from activetigger.tasks.train_bert_multilabel import TrainBertMultiLabel
+from activetigger.tasks.train_bert import TrainBert
 
 
 class LanguageModels:
@@ -186,13 +184,13 @@ class LanguageModels:
         user: str,
         scheme: str,
         df: DataFrame,
-        training_kind : str,
+        training_kind: str,
         scheme_labels: list[str],
         col_text: str,
         col_label: str,
         params: LMParametersModel,
-        use_dichotomization:bool,
-        label_for_dichotomization:str|None=None,
+        use_dichotomization: bool,
+        label_for_dichotomization: str | None = None,
         base_model: str = "almanach/camembert-base",
         test_size: float = 0.2,
         num_min_annotations: int = 10,
@@ -230,62 +228,33 @@ class LanguageModels:
                 raise Exception("Not enough GPU memory available. Wait or reduce batch.")
 
         # launch as a independant process
-        if training_kind == "multiclass":
-            unique_id = self.queue.add_task(
-                "training",
-                project,
-                TrainBertMultiClass(
-                    path=self.path,
-                    project_slug=project,
-                    model_name=model_name,
-                    df=df.copy(deep=True),
-                    training_kind=training_kind,
-                    scheme_labels=scheme_labels,
-                    col_label=col_label,
-                    col_text=col_text,
-                    base_model=base_model,
-                    params=params,
-                    test_size=test_size,
-                    loss=loss,
-                    max_length=max_length,
-                    auto_max_length=auto_max_length,
-                    class_balance=class_balance,
-                    class_min_freq=class_min_freq,
-                    use_dichotomization=use_dichotomization,
-                    label_for_dichotomization=label_for_dichotomization
-                ),
-                queue="gpu",
-            )
-
-        elif training_kind == "multilabel":
-            unique_id = self.queue.add_task(
-                "training",
-                project,
-                TrainBertMultiLabel(
-                    path=self.path,
-                    project_slug=project,
-                    model_name=model_name,
-                    df=df.copy(deep=True),
-                    training_kind=training_kind,
-                    scheme_labels=scheme_labels,
-                    col_label=col_label,
-                    col_text=col_text,
-                    base_model=base_model,
-                    params=params,
-                    test_size=test_size,
-                    loss=loss,
-                    max_length=max_length,
-                    auto_max_length=auto_max_length,
-                    class_balance=class_balance,
-                    class_min_freq=class_min_freq,
-                    use_dichotomization=use_dichotomization,
-                    label_for_dichotomization=label_for_dichotomization
-                ),
-                queue="gpu",
-            )
-        else:
-            raise ValueError("Only multilabel and multiclass training are "
-                f"supported. You required {training_kind}.")
+        if training_kind not in ["multilabel", "multiclass"]:
+            raise Exception("training_kind must be multilabel or multiclass")
+        unique_id = self.queue.add_task(
+            "training",
+            project,
+            TrainBert(
+                path=self.path,
+                project_slug=project,
+                model_name=model_name,
+                df=df.copy(deep=True),
+                training_kind=training_kind,
+                scheme_labels=scheme_labels,
+                col_label=col_label,
+                col_text=col_text,
+                base_model=base_model,
+                params=params,
+                test_size=test_size,
+                loss=loss,
+                max_length=max_length,
+                auto_max_length=auto_max_length,
+                class_balance=class_balance,
+                class_min_freq=class_min_freq,
+                use_dichotomization=use_dichotomization,
+                label_for_dichotomization=label_for_dichotomization,
+            ),
+            queue="gpu",
+        )
         del df
 
         # add flags in params
@@ -329,7 +298,7 @@ class LanguageModels:
         df: DataFrame | None,
         dataset: str,
         training_kind: str,
-        scheme_labels : list[str],
+        scheme_labels: list[str],
         col_label: str | None = None,
         batch_size: int = 32,
         status: str = "predicting",
@@ -608,10 +577,10 @@ class LanguageModels:
         if not self.exists(model_name):
             raise Exception(f"The model {model_name} does not exist")
 
-        metrics : dict[str:MLStatisticsModel] = get_model_metrics(self.path.joinpath(model_name))
+        metrics = get_model_metrics(self.path.joinpath(model_name))
         if metrics is None:
             metrics = {}
-        
+
         # TODO: delete this hotfix to ensure that previously trained models will not trigger errors
         for key in metrics:
             if "training_kind" not in metrics[key]:
