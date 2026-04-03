@@ -92,7 +92,8 @@ class CustomLoggingCallback(TrainerCallback):
 
 # Rescaling the weights
 def compute_class_weights(dataset, label_key="labels"):
-    labels = [example[label_key] for example in dataset]
+    # Labels are stored as one-hot vectors; convert to class indices
+    labels = [example[label_key].argmax().item() for example in dataset]
     label_counts = Counter(labels)
     total = sum(label_counts.values())
     num_classes = len(label_counts)
@@ -115,9 +116,10 @@ class CustomTrainer(Trainer):
         outputs = model(**inputs)
         logits = outputs.get("logits")
 
-        # Use dynamic weights
+        # Convert one-hot labels to class indices for CrossEntropyLoss
+        label_indices = labels.argmax(dim=-1)
         loss_fct = nn.CrossEntropyLoss(weight=self.class_weights.to(logits.device))
-        loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
+        loss = loss_fct(logits.view(-1, self.model.config.num_labels), label_indices.view(-1))
         return (loss, outputs) if return_outputs else loss
 
 
@@ -198,6 +200,8 @@ class TrainBert(BaseTask):
         self.test_size = test_size
         self.event = event
         self.unique_id = unique_id
+        if loss == "weighted_cross_entropy" and training_kind == "multilabel":
+            raise ValueError("weighted_cross_entropy loss is not supported for multilabel classification.")
         self.loss = loss
         self.max_length = max_length
         self.auto_max_length = auto_max_length
@@ -401,16 +405,16 @@ class TrainBert(BaseTask):
                 eval_dataset=eval_dataset,
                 callbacks=[callback],
             )
-        # elif loss == "weighted_cross_entropy":
-        #     print("Using weighted cross entropy loss - EXPERIMENTAL")
-        #     trainer = CustomTrainer(
-        #         model=bert_model,
-        #         args=training_args,
-        #         train_dataset=ds["train"],
-        #         eval_dataset=eval_dataset,
-        #         callbacks=[callback],
-        #         class_weights=compute_class_weights(ds["train"], label_key="labels"),
-        #     )
+        elif loss == "weighted_cross_entropy":
+            print("Using weighted cross entropy loss - EXPERIMENTAL")
+            trainer = CustomTrainer(
+                model=bert_model,
+                args=training_args,
+                train_dataset=ds["train"],
+                eval_dataset=eval_dataset,
+                callbacks=[callback],
+                class_weights=compute_class_weights(ds["train"], label_key="labels"),
+            )
         else:
             raise ValueError(f"Loss function {loss} not recognized.")
 
