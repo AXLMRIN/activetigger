@@ -1664,7 +1664,8 @@ class Project:
                 ):
                     message = (
                         f"Error for process {e.kind} : GPU error — not enough GPU memory available. "
-                        "Try reducing the batch size, the max sequence length, or using a smaller model."
+                        "Try reducing the batch size, the max sequence length, or using a smaller model. "
+                        f"Details: {exception_str}"
                     )
                 else:
                     message = f"Error for process {e.kind} : {exception}"
