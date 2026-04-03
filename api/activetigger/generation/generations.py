@@ -1,6 +1,7 @@
 import re
+from typing import cast
 
-import pandas as pd
+import pandas as pd  # type: ignore[import]
 from pandas import DataFrame
 
 from activetigger.datamodels import (  # ignore[import]
@@ -110,7 +111,7 @@ class Generations:
             project_slug=project_slug, user_name=user_name
         )
         df = pd.DataFrame(
-            result, columns=["time", "index", "batch", "prompt", "answer", "model_name"]
+            result, columns=pd.Index(["time", "index", "batch", "prompt", "answer", "model_name"])
         )
         df["time"] = pd.to_datetime(df["time"])
         if df["time"].dt.tz is None:
@@ -194,7 +195,7 @@ class Generations:
         Apply filters
         """
         if "remove_punct" in filters:
-            answers = answers.apply(remove_punctuation)
+            answers = cast(pd.Series, answers.apply(remove_punctuation))
         if "remove_spaces" in filters:
             answers = answers.str.replace(r"\s+", " ")
         if "lowercase" in filters:
@@ -202,7 +203,7 @@ class Generations:
         if "strip" in filters:
             answers = answers.str.strip()
         if "replace_accents" in filters:
-            answers = answers.apply(replace_accented_chars)
+            answers = cast(pd.Series, answers.apply(replace_accented_chars))
         return answers
 
     def state(self) -> GenerationsProjectStateModel:
