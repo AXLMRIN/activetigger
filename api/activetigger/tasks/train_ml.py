@@ -17,12 +17,12 @@ from sklearn.model_selection import (  # type: ignore[import]
 )
 
 from activetigger.datamodels import EventsModel, MLStatisticsModel, QuickModelComputed
-from activetigger.functions import get_metrics
+from activetigger.functions import get_metrics_multiclass
 from activetigger.monitoring import TaskTimer
 from activetigger.tasks.base_task import BaseTask
 
 
-class TrainML(BaseTask):
+class TrainMLMultiClass(BaseTask):
     """
     Fit a sklearn model
     """
@@ -120,11 +120,10 @@ class TrainML(BaseTask):
         Compute metrics
         """
         texts = self.texts.loc[y_true.index] if self.texts is not None else None
-        metrics = get_metrics(
+        metrics = get_metrics_multiclass(
             y_true,
             y_pred,
             texts=texts,
-            labels=[l for l in self.labels if l not in self.exclude_labels],
         )
         return metrics
 
@@ -139,10 +138,9 @@ class TrainML(BaseTask):
             cross_val_predict(self.model, self.X[f], self.Y[f], cv=kf), index=self.Y[f].index
         )
 
-        statistics_cv10 = get_metrics(
+        statistics_cv10 = get_metrics_multiclass(
             self.Y[f],
             Y_pred_10cv,
-            labels=self.labels,
         )
         # overwrite false_predictions
         statistics_cv10.false_predictions = None
@@ -246,7 +244,7 @@ class TrainML(BaseTask):
             self.model.fit(X_train, Y_train)
             task_timer.stop("train")
         except Exception as e:
-            raise Exception((f"Problem fitting the model (TrainML.__call__)\nError: {e}"))
+            raise Exception((f"Problem fitting the model (TrainMLMultiClass.__call__)\nError: {e}"))
 
         self._check_cancelled()
 
@@ -256,7 +254,7 @@ class TrainML(BaseTask):
             Y_pred_test = pd.Series(self.model.predict(X_test), index=X_test.index)
         except Exception as e:
             raise Exception(
-                (f"Problem computing predictions after fitting (TrainML.__call__)\nError: {e}")
+                (f"Problem computing predictions after fitting (TrainMLMultiClass.__call__)\nError: {e}")
             )
 
         # compute probabilities for all data
@@ -267,7 +265,7 @@ class TrainML(BaseTask):
             proba["prediction"] = proba.idxmax(axis=1)
             proba["entropy"] = entropy(proba_values, axis=1)
         except Exception as e:
-            raise Exception((f"Problem calculating the entropy (TrainML.__call__)\nError: {e}"))
+            raise Exception((f"Problem calculating the entropy (TrainMLMultiClass.__call__)\nError: {e}"))
 
         self._check_cancelled()
 
@@ -277,7 +275,7 @@ class TrainML(BaseTask):
             metrics_test = self.__compute_metrics(y_true=Y_test, y_pred=Y_pred_test)
             task_timer.stop("evaluate")
         except Exception as e:
-            raise Exception((f"Problem computing the metrics (TrainML.__call__)\nError: {e}"))
+            raise Exception((f"Problem computing the metrics (TrainMLMultiClass.__call__)\nError: {e}"))
 
         self._check_cancelled()
 
@@ -288,7 +286,7 @@ class TrainML(BaseTask):
                 task_timer.stop("cv10")
             except Exception as e:
                 raise Exception(
-                    (f"Problem computing the cross valisation (TrainML.__compute_cv10)\nError: {e}")
+                    (f"Problem computing the cross valisation (TrainMLMultiClass.__compute_cv10)\nError: {e}")
                 )
         else:
             statistics_cv10 = None

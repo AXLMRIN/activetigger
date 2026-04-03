@@ -2413,7 +2413,10 @@ export interface components {
             type: string;
             /** Name */
             name: string;
-            /** Use Default Name */
+            /**
+             * Use Default Name
+             * @default true
+             */
             use_default_name: boolean;
             /** Parameters */
             parameters: {
@@ -2665,6 +2668,8 @@ export interface components {
         };
         /** MLStatisticsModel */
         MLStatisticsModel: {
+            /** Training Kind */
+            training_kind?: string | null;
             /** F1 Label */
             f1_label?: {
                 [key: string]: number | undefined;
@@ -3448,9 +3453,9 @@ export interface components {
              */
             n_disagreements: number;
             /** Agreement Percentage */
-            agreement_percentage: number | null;
+            agreement_percentage?: number | null;
             /** Cohen Kappa */
-            cohen_kappa: number | null;
+            cohen_kappa?: number | null;
         };
         /**
          * SchemeModel
@@ -5678,7 +5683,7 @@ export interface operations {
                 model_name: string;
                 scheme: string;
                 kind: string;
-                dataset?: string;
+                dataset_type?: string;
                 batch_size?: number;
                 project_slug: string;
             };

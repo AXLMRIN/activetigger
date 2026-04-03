@@ -32,6 +32,7 @@ export const ModelCreationForm: FC<ModelCreationFormProps> = ({
   // form to train a model
   const { trainBertModel } = useTrainBertModel(projectSlug || null, currentScheme || null);
   const [disableMaxLengthInput, setDisableMaxLengthInput] = useState<boolean>(true);
+  const [disableLabelsToIgnore, setDisableLabelsToIgnore] = useState<boolean>(false);
   // const { gpu } = useGetServer(currentProject || null);
   const { notify } = useNotifications();
   // available base models suited for the project : sorted by language + priority
@@ -84,6 +85,7 @@ export const ModelCreationForm: FC<ModelCreationFormProps> = ({
       adapt: false,
     },
     exclude_labels: [],
+    dichotomize: 'No dichotomization',
   });
 
   const {
@@ -99,6 +101,11 @@ export const ModelCreationForm: FC<ModelCreationFormProps> = ({
   useEffect(() => {
     setDisableMaxLengthInput(autoMaxLengthValue);
   }, [autoMaxLengthValue]);
+  const dichotomization = watch('dichotomize');
+  useEffect(() => {
+    if (dichotomization === 'No dichotomization') setDisableLabelsToIgnore(false);
+    else setDisableLabelsToIgnore(true);
+  }, [dichotomization]);
 
   const onSubmitNewModel: SubmitHandler<newBertModel> = async (data) => {
     // setActiveKey('models');
@@ -110,26 +117,13 @@ export const ModelCreationForm: FC<ModelCreationFormProps> = ({
       });
       return;
     } else {
+      console.log(data);
       await trainBertModel(data);
       if (setStatusDisplay) setStatusDisplay(false);
     }
   };
   return (
     <form onSubmit={handleSubmitNewModel(onSubmitNewModel)}>
-      {kindScheme == 'multilabel' && (
-        <div role="alert" className="alert alert-warning">
-          <label htmlFor="dichotomize">
-            This is a multiclass scheme. The model needs to be dichotomize on a specific label
-            (yes/no)
-          </label>
-          <select id="dichotomize" {...registerNewModel('dichotomize')}>
-            {Object.values(availableLabels).map((e) => (
-              <option key={e}>{e}</option>
-            ))}{' '}
-          </select>
-        </div>
-      )}
-
       <label htmlFor="new-model-type"></label>
       <label>Name for the model</label>
       <input type="text" {...registerNewModel('name')} placeholder="Name the model" />
@@ -333,6 +327,18 @@ export const ModelCreationForm: FC<ModelCreationFormProps> = ({
       <details className="custom-details">
         <summary>Advanced parameters for the data</summary>
 
+        {kindScheme == 'multilabel' && (
+          <div>
+            <label htmlFor="dichotomize">Dichotomize on a specific label (yes/no) </label>
+            <select id="dichotomize" {...registerNewModel('dichotomize')}>
+              <option key="none">No dichotomization</option>
+              {Object.values(availableLabels).map((e) => (
+                <option key={e}>{e}</option>
+              ))}{' '}
+            </select>
+          </div>
+        )}
+
         <label>
           Labels to ignore{' '}
           <a className="ignore">
@@ -346,10 +352,12 @@ export const ModelCreationForm: FC<ModelCreationFormProps> = ({
         <Controller
           name="exclude_labels"
           control={control}
+          disabled={disableLabelsToIgnore}
           render={({ field: { onChange } }) => (
             <Select
               options={existingLabels}
               isMulti
+              isDisabled={disableLabelsToIgnore}
               onChange={(selectedOptions) => {
                 onChange(selectedOptions ? selectedOptions.map((option) => option.label) : []);
               }}

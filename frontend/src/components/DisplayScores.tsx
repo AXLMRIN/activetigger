@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { MLStatisticsModel } from '../types';
 import { DisplayTableStatistics } from './DisplayTableStatistics';
 import { DisplayTableStatisticsReact } from './DisplayTableStatisticsReact';
+import { DisplayTableStatisticsReactMultilabel } from './DisplayTableStatisticsReactMultiLabel';
 
 export interface DisplayScoresProps {
   title: string | null;
@@ -78,7 +79,7 @@ export const DisplayScores: FC<DisplayScoresProps> = ({
     },
     {
       name: 'Label',
-      key: 'label',
+      key: 'GS-label',
       resizable: true,
     },
     {
@@ -113,7 +114,13 @@ export const DisplayScores: FC<DisplayScoresProps> = ({
       </span>
 
       {viewTable ? (
-        <DisplayTableStatistics scores={scores} title={title} />
+        scores.training_kind === 'multilabel' ? (
+          <>multilabel</>
+        ) : (
+          <DisplayTableStatistics scores={scores} title={title} />
+        )
+      ) : scores.training_kind === 'multilabel' ? (
+        <DisplayTableStatisticsReactMultilabel scores={scores} title={title} />
       ) : (
         <DisplayTableStatisticsReact scores={scores} title={title} />
       )}
