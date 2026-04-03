@@ -149,6 +149,7 @@ def get_model_information(
         else:
             raise Exception(f"Model kind {kind} not recognized")
     except Exception as e:
+        print(f"Erreur in /models/information:\n{e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -159,7 +160,7 @@ def predict(
     model_name: str,
     scheme: str,
     kind: str,
-    dataset: str = "annotable",
+    dataset_type: str = "annotable",
     batch_size: int = 32,
     external_dataset: TextDatasetModel | None = None,
 ) -> None:
@@ -179,104 +180,60 @@ def predict(
         if kind not in ["quick", "bert"]:
             raise Exception(f"Model kind {kind} not recognized")
 
-        if dataset not in ["annotable", "external", "all"]:
-            raise Exception(f"Dataset {dataset} not recognized")
+        if dataset_type not in ["annotable", "external", "all"]:
+            raise Exception(f"Dataset {dataset_type} not recognized")
 
         # managing the perimeter of the prediction
         datasets = None
-        if dataset == "annotable":
+        if dataset_type == "annotable":
             datasets = ["train"]
             if project.data.valid is not None:
                 datasets.append("valid")
             if project.data.test is not None:
                 datasets.append("test")
-        if dataset == "external":
+        if dataset_type == "external":
             if kind != "bert":
                 raise Exception("External dataset prediction is only available for bert models")
 
-        # case for bert models
         if kind == "bert":
-            # case the prediction is done on an external dataset
-            if dataset == "external":
-                if external_dataset is None:
-                    raise Exception("External dataset must be provided for external prediction")
-                if not project.data.get_path(external_dataset.filename).exists():
-                    raise HTTPException(
-                        status_code=404,
-                        detail=f"External dataset file {external_dataset.filename} not found",
-                    )
-                df = None
-                col_label = None
-                datasets = None
-                path_data = project.data.get_path(external_dataset.filename)
-
-            # case the prediction is done on all the data
-            elif dataset == "all":
-                df = None
-                col_label = None
-                datasets = None
-                path_data = project.data.path_data_all
-
-            # case the prediction is done on annotable data
-            else:
-                if datasets is None:
-                    raise Exception("No dataset available for prediction")
-                df = project.schemes.get_scheme(
-                    scheme=scheme, complete=True, datasets=datasets, id_external=True
+            if dataset_type=="external" and external_dataset is None: 
+                raise Exception("External dataset must be provided for external "
+                    "prediction")
+            if (dataset_type=="external" and
+                not project.data.get_path(external_dataset.filename).exists()):
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"External dataset file {external_dataset.filename} not found",
                 )
-                col_label = "labels"
-                path_data = None
-                print(df)
-
-            project.languagemodels.start_predicting_process(
-                project_slug=project.name,
-                name=model_name,
-                user=current_user.username,
-                df=df,
-                col_label=col_label,
-                dataset=dataset,
-                batch_size=batch_size,
-                statistics=datasets,
-                path_data=path_data,
+            project.start_language_model_prediction(
+                username=current_user.username,
+                dataset_type=dataset_type,
+                datasets=datasets,
+                scheme_name=scheme,
+                model_name=model_name,
                 external_dataset=external_dataset,
+                batch_size=batch_size,
             )
 
-        # case for quick models
         if kind == "quick":
             if datasets is None:
-                raise Exception("Dataset parameter must be specified for quick model prediction")
-            sm = project.quickmodels.get(model_name)
-            if sm is None:
-                raise Exception(f"Quick model {model_name} not found")
-
-            # build the X, y dataframe
-            df = project.features.get(sm.features, dataset=dataset, keep_dataset_column=True)
-            cols_features = [col for col in df.columns if col != "dataset"]
-            labels = project.schemes.get_scheme(scheme=scheme, complete=True, datasets=datasets)
-            df["labels"] = labels["labels"]
-            df["text"] = labels["text"]
-
-            # add the data for the labels
-            project.quickmodels.start_predicting_process(
-                name=model_name,
+                raise Exception("Dataset parameter must be specified for quick "
+                    "model prediction")
+            project.start_quick_model_prediction(
                 username=current_user.username,
-                df=df,
-                dataset=dataset,
-                col_dataset="dataset",
-                cols_features=cols_features,
-                col_label="labels",
-                statistics=datasets,
-                col_text="text",
+                dataset_type=dataset_type,
+                datasets=datasets,
+                scheme_name=scheme,
+                model_name=model_name
             )
-
         orchestrator.log_action(
             current_user.username,
-            f"PREDICT MODEL: {model_name} - {kind} DATASET: {dataset}",
+            f"PREDICT MODEL: {model_name} - {kind} DATASET: {dataset_type}",
             project.name,
         )
     except Exception as e:
+        print(f"ERROR in /models/predict\n{e}\n\n")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.post("/models/bert/train", dependencies=[Depends(verified_user)])
 def post_bert(
@@ -302,6 +259,7 @@ def post_bert(
         return None
 
     except Exception as e:
+        print(f"ERREUR : \n{e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -35,8 +35,8 @@ from activetigger.db.languagemodels import ModelsService
 from activetigger.db.manager import DatabaseManager
 from activetigger.functions import get_model_metrics
 from activetigger.queue_manager import Queue
-from activetigger.tasks.predict_ml import PredictML
-from activetigger.tasks.train_ml import TrainML
+from activetigger.tasks.predict_ml import PredictMLMultiClass
+from activetigger.tasks.train_ml import TrainMLMultiClass
 
 
 class QuickModels:
@@ -202,7 +202,7 @@ class QuickModels:
             "exclude_labels": exclude_labels,
             "test_size": test_size,
         }
-        unique_id = self.queue.add_task("train_quickmodel", project_slug, TrainML(**args))
+        unique_id = self.queue.add_task("train_quickmodel", project_slug, TrainMLMultiClass(**args))
         del args
 
         req = QuickModelComputing(
@@ -432,7 +432,7 @@ class QuickModels:
         unique_id = self.queue.add_task(
             "prediction",
             self.project_slug,
-            PredictML(
+            PredictMLMultiClass(
                 model=sm.model,
                 df=df,
                 col_dataset=col_dataset,

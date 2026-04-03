@@ -50,6 +50,7 @@ from activetigger.datamodels import (
     QuickModelInModel,
     StaticFileModel,
     UpdateComputing,
+    TextDatasetModel
 )
 from activetigger.db.manager import DatabaseManager
 from activetigger.features import Features
@@ -59,6 +60,9 @@ from activetigger.functions import (
     regex_contains,
     sanitize_query_expression,
     slugify,
+    get_number_occurrences_per_label,
+    remove_labels_without_enough_annotations,
+    dichotomize
 )
 from activetigger.generation.generations import Generations
 from activetigger.languagemodels import LanguageModels
@@ -599,9 +603,7 @@ class Project:
 
         # management for multilabels / dichotomize
         if quickmodel.dichotomize is not None:
-            df_scheme["labels"] = df_scheme["labels"].apply(
-                lambda x: self.schemes.dichotomize(x, quickmodel.dichotomize)
-            )
+            df_scheme, _ = dichotomize(df_scheme, "labels", quickmodel.dichotomize)
 
         # test for a minimum of annotated elements
         counts = df_scheme["labels"].value_counts()
@@ -833,12 +835,17 @@ class Project:
         indicator = None
         n_sample = f.sum()  # use len(ss) for adding history
 
+        # validate selection method
+        valid_selections = {"fixed", "random", "maxprob", "active"}
+        if next.selection not in valid_selections:
+            raise ValueError(f"Unknown selection method: '{next.selection}'")
+
         # select an element based on the method
 
         if next.selection == "fixed":  # next row
             element_id = ss.index[0]
 
-        if next.selection == "random":  # random row
+        elif next.selection == "random":  # random row
             element_id = ss.sample(n=1).index[0]
 
         # be sure that the model has been trained
@@ -1418,24 +1425,37 @@ class Project:
         df = self.schemes.get_scheme(bert.scheme, datasets=["train"], complete=True)
         df = df[["text", "labels"]].dropna()
 
+        # Sort multilabel/multiclass
+        scheme = self.schemes.available()[bert.scheme]
+        scheme_labels = scheme.labels
+        training_kind = scheme.kind # "multiclass" or "multilabel"
+        if training_kind not in ["multiclass", "multilabel"]:
+            raise Exception(f"Training does not support this type of scheme "
+                            f"(kind: {training_kind})")
+
         # management for multilabels / dichotomize
-        if bert.dichotomize is not None:
-            df["labels"] = df["labels"].apply(
-                lambda x: self.schemes.dichotomize(x, bert.dichotomize)
-            )
+        use_dichotomization = bert.dichotomize is not None and bert.dichotomize != "No dichotomization"
+        if use_dichotomization:
+            df, scheme_labels = dichotomize(df, "labels", bert.dichotomize)
             bert.name = f"{bert.name}_multilabel_on_{bert.dichotomize}"
+            # Force training kind and scheme_labels
+            training_kind = "multiclass"
+            # Sanitize df
+            df = df[df["labels"].notna()]
 
         # remove class under the threshold
-        label_counts = df["labels"].value_counts()
-        df = df[df["labels"].isin(label_counts[label_counts >= bert.class_min_freq].index)]
-
-        # remove class requested by the user
-        if len(bert.exclude_labels) > 0:
-            df = df[~df["labels"].isin(bert.exclude_labels)]
-            bert.name = f"{bert.name}_exclude_labels_"
+        label_counts = get_number_occurrences_per_label(df["labels"], scheme_labels)
+        if not use_dichotomization:
+            for label_to_exclude in bert.exclude_labels:
+                # force label counts to -1 to remove them  at the same time
+                label_counts[label_to_exclude] = -1
+        df, scheme_labels = remove_labels_without_enough_annotations(
+            df, "labels", label_counts, bert.class_min_freq)
+        df = df[df["labels"].notna()]
 
         # balance the dataset based on the min class
-        if bert.class_balance:
+        if bert.class_balance and training_kind == "multiclass":
+            # Specific behaviour for multiclass, balance classes is disabled for multilabels
             min_freq = df["labels"].value_counts().sort_values().min()
             df = df.groupby("labels").sample(n=min_freq)
 
@@ -1446,6 +1466,8 @@ class Project:
             user=username,
             scheme=bert.scheme,
             df=df,
+            training_kind = training_kind, 
+            scheme_labels=scheme_labels,
             col_text=df.columns[0],
             col_label=df.columns[1],
             base_model=bert.base_model,
@@ -1456,12 +1478,107 @@ class Project:
             auto_max_length=bert.auto_max_length,
             class_balance=bert.class_balance,
             class_min_freq=bert.class_min_freq,
+            use_dichotomization=use_dichotomization,
+            label_for_dichotomization=bert.dichotomize if use_dichotomization else None
         )
         self.monitoring.register_process(
             process_name=process_id,
             kind="train_languagemodel",
             parameters={},
             user_name=username,
+        )
+
+    def start_language_model_prediction(self, 
+        username: str,
+        dataset_type: str,
+        datasets: list[str]|None,
+        scheme_name: str,
+        model_name: str,
+        external_dataset: TextDatasetModel,
+        batch_size: int = 32
+    ) -> None:
+        """
+        Fetch all necessary data and launch a prediction process
+        """
+        # Retrieve relevant data
+        if dataset_type == "external":
+            df = None
+            col_label = None
+            datasets = None
+            path_data = self.data.get_path(external_dataset.filename)
+        elif dataset_type == "all":
+            df = None
+            col_label = None
+            datasets = None
+            path_data = self.data.path_data_all
+        elif dataset_type == "annotable":
+            if datasets is None:
+                raise Exception("No dataset available for prediction")
+            df = self.schemes.get_scheme(
+                scheme=scheme_name, 
+                complete=True, 
+                datasets=datasets, 
+                id_external=True
+            )
+            col_label = "labels"
+            path_data = None
+        else:
+            raise Exception(f"Dataset {dataset_type} not recognized")
+
+        scheme_ = self.schemes.available()[scheme_name]
+        training_kind = scheme_.kind 
+        if training_kind not in ["multiclass", "multilabel"]:
+            raise Exception(f"Prediction does not support this type of scheme "
+                            f"(kind: {training_kind})")
+        scheme_labels = scheme_.labels
+        self.languagemodels.start_predicting_process(
+            project_slug=self.name,
+            name=model_name,
+            user=username,
+            df=df,
+            training_kind=training_kind,
+            scheme_labels=scheme_labels,
+            col_label=col_label,
+            dataset=dataset_type,
+            batch_size=batch_size,
+            statistics=datasets,
+            path_data=path_data,
+            external_dataset=external_dataset,
+        ) 
+
+    def start_quick_model_prediction(
+            self, 
+            username:str,
+            dataset_type : str,
+            datasets: list[str] | None, 
+            scheme_name: str,
+            model_name: str,
+    ) -> None:
+        """
+        Fetch all necessary data and launch prediction process
+        """
+        sm = self.quickmodels.get(model_name)
+        if sm is None:
+            raise Exception(f"Quick model {model_name} not found")
+
+        # build the X, y dataframe
+        df = self.features.get(sm.features, dataset=dataset_type, keep_dataset_column=True)
+        cols_features = [col for col in df.columns if col != "dataset"]
+        labels = self.schemes.get_scheme(scheme=scheme_name, complete=True, datasets=datasets)
+        df["labels"] = labels["labels"]
+        df["text"] = labels["text"]
+
+        # add the data for the labels
+        self.quickmodels.start_predicting_process(
+            name=model_name,
+            username=username,
+            df=df,
+            dataset=dataset_type,
+            col_dataset="dataset",
+            cols_features=cols_features,
+            col_label="labels",
+            statistics=datasets,
+            col_text="text",
         )
 
     def start_generation(self, request: GenerationRequest, username: str) -> None:
@@ -1547,7 +1664,8 @@ class Project:
                 ):
                     message = (
                         f"Error for process {e.kind} : GPU error — not enough GPU memory available. "
-                        "Try reducing the batch size, the max sequence length, or using a smaller model."
+                        "Try reducing the batch size, the max sequence length, or using a smaller model. "
+                        f"Details: {exception_str}"
                     )
                 else:
                     message = f"Error for process {e.kind} : {exception}"
