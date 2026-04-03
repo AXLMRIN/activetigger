@@ -98,14 +98,14 @@ export const HomePage: FC = () => {
                     color: '#ff9a3c',
                   }}
                 >
-                  Active Tuna
+                  Active Tigger
                 </h1>
                 <h3 className="m-0 fs-5 text-muted fw-normal">Explore & Annotate Text</h3>
                 <img
                   src={logo}
                   alt="ActiveTigger"
-                  className="me-2"
-                  style={{ width: '200px', height: '200px' }}
+                  className="d-block mx-auto"
+                  style={{ width: '200px' }}
                 />
               </div>
               {n_users == null && (
