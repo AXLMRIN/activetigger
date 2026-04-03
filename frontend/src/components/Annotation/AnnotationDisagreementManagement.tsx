@@ -166,14 +166,12 @@ export const AnnotationDisagreementManagement: FC<AnnotationDisagreementManageme
                 'Annotated by 2+ users': agreementStats.n_total,
                 Agreements: agreementStats.n_agreements,
                 Disagreements: agreementStats.n_disagreements,
-                'Agreement (%)':
-                  agreementStats.agreement_percentage !== null
-                    ? (agreementStats.agreement_percentage * 100).toFixed(2)
-                    : null,
-                "Cohen's Kappa":
-                  agreementStats.cohen_kappa !== null
-                    ? agreementStats.cohen_kappa.toFixed(2)
-                    : null,
+                'Agreement (%)': agreementStats.agreement_percentage
+                  ? (agreementStats.agreement_percentage * 100).toFixed(2)
+                  : null,
+                "Cohen's Kappa": agreementStats.cohen_kappa
+                  ? agreementStats.cohen_kappa.toFixed(2)
+                  : null,
               } as unknown as Record<string, unknown>
             }
           />
