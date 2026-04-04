@@ -241,7 +241,7 @@ class TrainMLMultiClass(BaseTask):
         # Fit model --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
         try:
             task_timer.start("train")
-            self.model.fit(X_train, Y_train)
+            self.model.fit(X_train, Y_train)  # ty: ignore[unresolved-attribute]
             task_timer.stop("train")
         except Exception as e:
             raise Exception((f"Problem fitting the model (TrainMLMultiClass.__call__)\nError: {e}"))
@@ -250,8 +250,8 @@ class TrainMLMultiClass(BaseTask):
 
         # predict on test data --- --- --- --- --- --- --- --- --- --- --- --- -
         try:
-            Y_pred_train = pd.Series(self.model.predict(X_train), index=X_train.index)
-            Y_pred_test = pd.Series(self.model.predict(X_test), index=X_test.index)
+            Y_pred_train = pd.Series(self.model.predict(X_train), index=X_train.index)  # ty: ignore[unresolved-attribute]
+            Y_pred_test = pd.Series(self.model.predict(X_test), index=X_test.index)  # ty: ignore[unresolved-attribute]
         except Exception as e:
             raise Exception(
                 (f"Problem computing predictions after fitting (TrainMLMultiClass.__call__)\nError: {e}")
@@ -260,8 +260,8 @@ class TrainMLMultiClass(BaseTask):
         # compute probabilities for all data
         try:
             task_timer.start("evaluate")
-            proba_values = self.model.predict_proba(self.X)
-            proba = pd.DataFrame(proba_values, columns=self.model.classes_, index=self.X.index)
+            proba_values = self.model.predict_proba(self.X)  # ty: ignore[unresolved-attribute]
+            proba = pd.DataFrame(proba_values, columns=self.model.classes_, index=self.X.index)  # ty: ignore[unresolved-attribute]
             proba["prediction"] = proba.idxmax(axis=1)
             proba["entropy"] = entropy(proba_values, axis=1)
         except Exception as e:

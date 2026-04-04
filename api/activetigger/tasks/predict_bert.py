@@ -1,6 +1,7 @@
 import gc
 import json
 import multiprocessing
+import multiprocessing.synchronize
 import os
 import time
 from pathlib import Path
@@ -340,7 +341,7 @@ class PredictBertMultiClass(BaseTask):
                     outputs = model(**chunk)
                 logits = outputs[0].detach().cpu().numpy()
                 proba = logits_to_probs(logits, kind=self.training_kind)
-                proba_predictions = np.append(proba_predictions, proba, axis=0)
+                proba_predictions = np.append(proba_predictions, proba, axis=0)  # type: ignore[assignment]
                 self.__write_progress(100 * (i + self.batch) / self.df.shape[0])
 
             # transform predictions to clean dataframe

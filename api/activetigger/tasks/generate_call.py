@@ -125,7 +125,7 @@ class GenerateCall(BaseTask):
                     user=self.username,
                     project_slug=self.project_slug,
                     model_id=self.model.id,
-                    element_id=_index,
+                    element_id=str(_index),
                     prompt=prompt_with_text,
                     answer=response,
                 )

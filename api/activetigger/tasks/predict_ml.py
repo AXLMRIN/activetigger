@@ -44,7 +44,7 @@ class PredictMLMultiClass(BaseTask):
         self.col_label = col_label
         self.col_text = col_text
 
-        expected_cols = self.model.feature_names_in_
+        expected_cols = self.model.feature_names_in_  # ty: ignore[unresolved-attribute]
         self.__check_data_and_features(col_dataset, expected_cols, col_features)
 
         self.X: pd.DataFrame = self.df.reindex(columns=list(expected_cols) + [col_dataset])
@@ -129,9 +129,9 @@ class PredictMLMultiClass(BaseTask):
         """
 
         # Predict
-        Y_pred = self.model.predict(self.X.drop(columns=["dataset"]))
-        Y_proba = self.model.predict_proba(self.X.drop(columns=["dataset"]))
-        labels_list = [label for label in self.model.classes_]
+        Y_pred = self.model.predict(self.X.drop(columns=["dataset"]))  # ty: ignore[unresolved-attribute]
+        Y_proba = self.model.predict_proba(self.X.drop(columns=["dataset"]))  # ty: ignore[unresolved-attribute]
+        labels_list = [label for label in self.model.classes_]  # ty: ignore[unresolved-attribute]
 
         # Aggregate data into one DataFrame
         Y_pred_full = pd.DataFrame(

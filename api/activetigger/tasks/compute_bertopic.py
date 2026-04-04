@@ -17,7 +17,7 @@ from bertopic import BERTopic  # type: ignore[import]
 from great_tables import GT, loc, style
 from jinja2 import Template
 from nltk.corpus import stopwords as nltk_stopwords  # type: ignore[import]
-from simplemma import lemmatize  # type: ignore[import]
+from simplemma import lemmatize  # type: ignore[import] # ty: ignore[unresolved-import]
 from sklearn.feature_extraction.text import CountVectorizer  # type: ignore[import]
 from slugify import slugify  # type: ignore[import]
 
@@ -31,7 +31,7 @@ nltk.download("stopwords", quiet=True)
 
 # accelerate UMAP
 try:
-    import cuml  # type: ignore[import-not-found]
+    import cuml  # type: ignore[import-not-found] # ty: ignore[unresolved-import]
 
     CUMl_AVAILABLE = True
 except Exception:
@@ -91,7 +91,7 @@ def visualize_documents(
     """"""
     # Transform inputs in np.ndarray
     embeddings = np.array(embeddings)
-    topics = np.array(topics)  # type: ignore[assignment]
+    topics_arr = np.array(topics)
 
     # Reduce embeddings
     umap_model = umap.UMAP(
@@ -147,10 +147,10 @@ def visualize_documents(
 
     # hovertext = hovertext_transform(docs)
 
-    for topic in np.unique(topics):
+    for topic in np.unique(topics_arr):
         if topic == -1:
             continue
-        indexes: np.ndarray = topics == topic
+        indexes: np.ndarray = topics_arr == topic
         if sum(indexes) < min_number_of_element:
             continue
         fig.add_trace(
@@ -161,7 +161,7 @@ def visualize_documents(
                 # hovertemplate = "%{text}",
                 # text = hovertext[indexes],
                 marker={"opacity": 0.75},
-                name=topic_info.loc[topic == topic_info.Topic, "Name"].item(),
+                name=topic_info.loc[topic == topic_info.Topic, "Name"].item(),  # ty: ignore[unresolved-attribute]
             )
         )
     return fig
@@ -619,7 +619,7 @@ class ComputeBertopic(BaseTask):
         jinja_data = {
             "bertopic_name": self.name.replace("-", " "),
             "topics": table_topics.as_raw_html(),
-            "map": fig_map.to_html(
+            "map": fig_map.to_html(  # ty: ignore[unresolved-attribute]
                 **saving_kwargs,
             ),
             "hierarchical": fig_hierarchical.to_html(
@@ -697,7 +697,7 @@ class ComputeBertopic(BaseTask):
             vectorizer_model = self.__load_vectorizer()
 
             topic_model = BERTopic(
-                language=self.parameters.language,
+                language=self.parameters.language or "english",
                 vectorizer_model=vectorizer_model,
                 # nr_topics=self.parameters.nr_topics, # Removed because overridden by the hdbscan model - Axel
                 # min_topic_size=self.parameters.min_topic_size, # Removed to propose topic reduction later in the pipeline - Axel
@@ -711,7 +711,7 @@ class ComputeBertopic(BaseTask):
             print(f"Fitting the model on {embeddings.shape} / {len(df)} elements")
             # Fit the BERTopic model
             topics, _ = topic_model.fit_transform(
-                documents=df[self.col_text],
+                documents=df[self.col_text].tolist(),
                 embeddings=embeddings,
             )
             task_timer.stop("fit")
@@ -723,7 +723,7 @@ class ComputeBertopic(BaseTask):
                 try:
                     print("Reducing outliers")
                     topics = topic_model.reduce_outliers(
-                        documents=df[self.col_text],
+                        documents=df[self.col_text].tolist(),
                         topics=topics,
                         embeddings=embeddings,
                         strategy="embeddings",

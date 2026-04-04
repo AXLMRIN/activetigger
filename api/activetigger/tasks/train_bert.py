@@ -2,6 +2,7 @@ import gc
 import json
 import logging
 import multiprocessing
+import multiprocessing.synchronize
 import os
 import shutil
 from collections import Counter
@@ -105,7 +106,7 @@ def compute_class_weights(dataset, label_key="labels"):
 
 # CustomTrainer is a subclass of Trainer that allows for custom loss computation.
 # https://stackoverflow.com/questions/70979844/using-weights-with-transformers-huggingface
-class CustomTrainer(Trainer):
+class CustomTrainer(Trainer):  # ty: ignore[unsupported-base]
     def __init__(self, *args, class_weights=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.class_weights = class_weights
@@ -174,7 +175,7 @@ class TrainBert(BaseTask):
         self.path = path
         self.project_slug = project_slug
         self.name = model_name
-        df.index.name = "id"
+        df.index.name = "id"  # ty: ignore[unresolved-attribute]
         self.df = df
         if training_kind not in ["multiclass", "multilabel"]:
             raise ValueError(
@@ -502,7 +503,7 @@ class TrainBert(BaseTask):
         self.logger = self.__init_logger(log_path)
         device = get_device()
 
-        self.df = self.__check_data(self.df, self.col_label, self.col_text)
+        self.df = self.__check_data(self.df, self.col_label, self.col_text)  # ty: ignore[invalid-argument-type]
         labels, label2id, id2label = self.__retrieve_labels(self.scheme_labels)
         self.ds = self.__transform_to_dataset(
             self.training_kind, self.df, self.col_label, self.col_text, label2id
@@ -548,23 +549,23 @@ class TrainBert(BaseTask):
             task_timer.stop("setup")
 
             task_timer.start("train")
-            trainer.train()  # type: ignore[attr-defined]
+            trainer.train()  # type: ignore[attr-defined] # ty: ignore[unresolved-attribute]
             self.logger.info(f"Model trained {current_path}")
             task_timer.stop("train")
 
             # predict on the data (separation validation set and training set)
             task_timer.start("evaluate")
-            predictions_train = trainer.predict(self.ds["train"])  # type: ignore[attr-defined]
+            predictions_train = trainer.predict(self.ds["train"])  # type: ignore[attr-defined] # ty: ignore[unresolved-attribute, invalid-argument-type]
 
             # Compute the metrics
-            df_train_results = self.ds["train"].to_pandas().set_index("id")
+            df_train_results = self.ds["train"].to_pandas().set_index("id")  # ty: ignore[unresolved-attribute]
 
-            df_train_results["true_label-matrix"] = predictions_train.label_ids.tolist()
+            df_train_results["true_label-matrix"] = predictions_train.label_ids.tolist()  # ty: ignore[unresolved-attribute]
             df_train_results["true_label"] = [
-                "|".join(matrix_to_label(row, id2label)) for row in predictions_train.label_ids
+                "|".join(matrix_to_label(row, id2label)) for row in predictions_train.label_ids  # ty: ignore[invalid-argument-type, not-iterable]
             ]
 
-            y_prob_pred = logits_to_probs(predictions_train.predictions, self.training_kind)
+            y_prob_pred = logits_to_probs(predictions_train.predictions, self.training_kind)  # ty: ignore[invalid-argument-type]
 
             if self.training_kind == "multiclass":
                 labels_predicted = activate_probs(
@@ -597,22 +598,22 @@ class TrainBert(BaseTask):
                 )
             elif self.training_kind == "multilabel":
                 metrics_train = get_metrics_multilabel(
-                    Y_true=predictions_train.label_ids,
+                    Y_true=predictions_train.label_ids,  # ty: ignore[invalid-argument-type]
                     Y_pred=labels_predicted,
                     texts=df_train_results["text"],
                     id2label=id2label,
                 )
 
             if "test" in self.ds:
-                predictions_test = trainer.predict(self.ds["test"])  # type: ignore[attr-defined]
-                df_test_results = self.ds["test"].to_pandas().set_index("id")
+                predictions_test = trainer.predict(self.ds["test"])  # type: ignore[attr-defined] # ty: ignore[unresolved-attribute, invalid-argument-type]
+                df_test_results = self.ds["test"].to_pandas().set_index("id")  # ty: ignore[unresolved-attribute]
 
-                df_test_results["true_label-matrix"] = predictions_test.label_ids.tolist()
+                df_test_results["true_label-matrix"] = predictions_test.label_ids.tolist()  # ty: ignore[unresolved-attribute]
                 df_test_results["true_label"] = [
-                    "|".join(matrix_to_label(row, id2label)) for row in predictions_test.label_ids
+                    "|".join(matrix_to_label(row, id2label)) for row in predictions_test.label_ids  # ty: ignore[invalid-argument-type, not-iterable]
                 ]
 
-                y_prob_pred = logits_to_probs(predictions_test.predictions, kind=self.training_kind)
+                y_prob_pred = logits_to_probs(predictions_test.predictions, kind=self.training_kind)  # ty: ignore[invalid-argument-type]
                 if self.training_kind == "multiclass":
                     y_label_pred = activate_probs(
                         y_prob_pred, strategy="max", force_max_1_per_row=True
@@ -633,7 +634,7 @@ class TrainBert(BaseTask):
                     )
                 elif self.training_kind == "multilabel":
                     metrics_test = get_metrics_multilabel(
-                        Y_true=predictions_test.label_ids,
+                        Y_true=predictions_test.label_ids,  # ty: ignore[invalid-argument-type]
                         Y_pred=y_label_pred,
                         texts=df_test_results["text"],
                         id2label=id2label,

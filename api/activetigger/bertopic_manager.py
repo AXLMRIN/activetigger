@@ -2,7 +2,7 @@ import json
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable
 
 import pandas as pd  # type: ignore[import]
 from fastapi.responses import FileResponse

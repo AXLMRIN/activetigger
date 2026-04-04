@@ -4,7 +4,7 @@ from activetigger.tasks.base_task import BaseTask
 
 # accelerate UMAP
 try:
-    import cuml  # type: ignore[import-not-found]
+    import cuml  # type: ignore[import-not-found] # ty: ignore[unresolved-import]
 
     CUMl_AVAILABLE = True
 except Exception:
@@ -61,7 +61,7 @@ class ComputeProjection(BaseTask):
 
         # Check if cuML is available for GPU acceleration
         try:
-            reducer = cuml.UMAP(**self.params, metric="cosine")
+            reducer = cuml.UMAP(**self.params, metric="cosine")  # ty: ignore[unresolved-attribute]
             print("Using cuML for UMAP computation")
         except Exception:
             reducer = umap.UMAP(**self.params, metric="cosine")

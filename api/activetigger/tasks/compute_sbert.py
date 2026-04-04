@@ -1,6 +1,7 @@
 import gc
 import math
 import multiprocessing
+import multiprocessing.synchronize
 from pathlib import Path
 from typing import Optional
 
