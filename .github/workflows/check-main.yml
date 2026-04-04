@@ -31,7 +31,7 @@ jobs:
         run: uvx ruff check
 
       - name: type check
-        run: uvx ty check
+        run: uv run ty check
 
   check-frontend:
     runs-on: ubuntu-latest
