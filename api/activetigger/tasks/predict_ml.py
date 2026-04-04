@@ -48,7 +48,7 @@ class PredictMLMultiClass(BaseTask):
         self.__check_data_and_features(col_dataset, expected_cols, col_features)
 
         self.X: pd.DataFrame = self.df.reindex(columns=list(expected_cols) + [col_dataset])
-        self.Y: pd.Series = self.df[col_label] if col_label is not None else None
+        self.Y: pd.Series = self.df[col_label]
 
         # Remove rows for which the label is to be excluded
         rows_to_keep = np.logical_and(self.Y.notna(), np.isin(self.Y, exclude_labels, invert=True))

@@ -1,4 +1,4 @@
-from pandas import DataFrame
+from pandas import DataFrame  # type: ignore[import]
 
 from activetigger.tasks.base_task import BaseTask
 
@@ -11,7 +11,7 @@ except Exception:
     print("CuML not available")
     cuml = None  # type: ignore[assignment]
     CUMl_AVAILABLE = False
-import pandas as pd
+import pandas as pd  # type: ignore[import]
 import umap  # type: ignore[import]
 from sklearn.manifold import TSNE  # type: ignore[import]
 from sklearn.preprocessing import StandardScaler  # type: ignore[import]
@@ -28,7 +28,9 @@ class ComputeProjection(BaseTask):
     features: DataFrame
     params: dict
 
-    def __init__(self, kind: str, features: DataFrame, params: dict, normalize_features: bool = False):
+    def __init__(
+        self, kind: str, features: DataFrame, params: dict, normalize_features: bool = False
+    ):
         super().__init__()
         self.kind = kind
         self.features = features
@@ -76,7 +78,7 @@ class ComputeProjection(BaseTask):
         """
         if self.normalize_features:
             features = StandardScaler().fit_transform(self.features)
-        else: 
+        else:
             features = self.features.values
 
         reduced_features = TSNE(**self.params).fit_transform(features)

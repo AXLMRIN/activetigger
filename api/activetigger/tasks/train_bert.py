@@ -9,13 +9,12 @@ from logging import Logger
 from pathlib import Path
 from typing import Any, Optional, Tuple
 
-import datasets  # type: ignore[import]  # type: ignore[import]
-import numpy as np
+import datasets  # type: ignore[import]
 import pandas as pd  # type: ignore[import]
 import torch
-from pandas import DataFrame
+from pandas import DataFrame  # type: ignore[import]
 from torch import nn
-from transformers import (  # type: ignore[import]  # type: ignore[import]
+from transformers import (  # type: ignore[import]
     AutoModelForSequenceClassification,
     AutoTokenizer,
     Trainer,
@@ -38,6 +37,7 @@ from activetigger.functions import (
 )
 from activetigger.monitoring import TaskTimer
 from activetigger.tasks.base_task import BaseTask
+from activetigger.tasks.predict_bert import annotations_to_matrix
 from activetigger.tasks.utils import length_after_tokenizing, retrieve_model_max_length
 
 pd.set_option("future.no_silent_downcasting", True)
@@ -201,7 +201,9 @@ class TrainBert(BaseTask):
         self.event = event
         self.unique_id = unique_id
         if loss == "weighted_cross_entropy" and training_kind == "multilabel":
-            raise ValueError("weighted_cross_entropy loss is not supported for multilabel classification.")
+            raise ValueError(
+                "weighted_cross_entropy loss is not supported for multilabel classification."
+            )
         self.loss = loss
         self.max_length = max_length
         self.auto_max_length = auto_max_length
@@ -244,9 +246,17 @@ class TrainBert(BaseTask):
             print(f"Missing texts - reducing training data to {len(df)}")
 
         # Test that all labels in the label column appear in the scheme labels
-        condition = df[col_label].apply(
-            lambda annotation: np.isin(split_annotation(annotation), self.scheme_labels).all()
-        )
+        scheme_set = set(self.scheme_labels)
+
+        def _check_labels(annotation: object) -> bool:
+            if not isinstance(annotation, str):
+                return False
+            parts = split_annotation(annotation)
+            if not isinstance(parts, list):
+                return False
+            return all(part in scheme_set for part in parts)
+
+        condition = df[col_label].apply(_check_labels)
         if (~condition).sum() > 0:
             df = df[condition]
             self.logger.info(f"Labels unrecognised - reducing training data to {len(df)}")
@@ -286,11 +296,7 @@ class TrainBert(BaseTask):
             ]
         elif training_kind == "multilabel":
             print("Preprocess multilabel")
-            annotations_as_list = df[col_label].copy()
-            labels_as_matrix = [
-                [int(label in split_annotation(annotation)) for label in label2id]
-                for annotation in annotations_as_list
-            ]
+            labels_as_matrix = annotations_to_matrix(df[col_label], list(label2id.keys())).tolist()
 
         return datasets.Dataset.from_dict(
             {"id": ids, "text": texts, "labels": torch.Tensor(labels_as_matrix)}
@@ -310,9 +316,12 @@ class TrainBert(BaseTask):
         adapt: bool,
     ) -> Tuple[Any, int]:
         """Cap the tokenizer max length and create a tokenizing function"""
+
         # if auto_max_length set max_length to the maximum length of tokenized sentences
         # Tokenize the text column
-        get_n_tokens = lambda txt: length_after_tokenizing(txt, tokenizer)
+        def get_n_tokens(txt):
+            return length_after_tokenizing(txt, tokenizer)
+
         if auto_max_length:
             max_length = int(texts.apply(get_n_tokens).dropna().max())
 

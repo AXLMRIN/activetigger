@@ -1,10 +1,8 @@
-import multiprocessing
 import os
 from pathlib import Path
-from typing import Optional
 
 import fasttext  # type: ignore[import]
-import pandas as pd
+import pandas as pd  # type: ignore[import]
 from fasttext.util import download_model  # type: ignore[import]
 from pandas import DataFrame, Series
 
@@ -34,7 +32,7 @@ class ComputeFasttext(BaseTask):
         self.path_models = path_models
         self.language = language
         self.model = model
-        event: Optional[multiprocessing.synchronize.Event] = None
+        self.event = None
 
     def __call__(self) -> DataFrame:
         """

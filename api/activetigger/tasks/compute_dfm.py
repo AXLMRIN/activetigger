@@ -1,5 +1,5 @@
 import pandas as pd
-from pandas import DataFrame, Series
+from pandas import DataFrame, Series  # type: ignore[import]
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer  # type: ignore[import]
 from spacy.lang.de import German
 from spacy.lang.en import English

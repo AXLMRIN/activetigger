@@ -11,7 +11,7 @@ from urllib.parse import quote
 import bcrypt
 import numpy as np
 import pandas as pd  # type: ignore[import]
-import regex
+import regex  # type: ignore[import]
 import spacy
 import torch
 from cryptography.fernet import Fernet
@@ -350,7 +350,7 @@ def find_best_threshold(
 def get_metrics_multiclass(
     Y_true: pd.Series | np.ndarray,
     Y_pred: pd.Series | np.ndarray,
-    id2label: list[str] | None = None,
+    id2label: dict[int, str] | None = None,
     texts: pd.Series | None = None,
     decimals: int = 3,
 ) -> MLStatisticsModel:
@@ -708,3 +708,14 @@ def dichotomize(
     df[label_col] = annotations
     new_scheme_labels = [label_for_dichotomization, f"not-{label_for_dichotomization}"]
     return df, new_scheme_labels
+
+
+def annotations_to_matrix(annotations: pd.Series, labels: list[str]) -> np.ndarray:
+    """
+    Convert a series of pipe-separated annotations to a binary matrix.
+    """
+    rows = []
+    for annotation in annotations:
+        parts = annotation.split("|") if isinstance(annotation, str) else []
+        rows.append([int(label in parts) for label in labels])
+    return np.array(rows)

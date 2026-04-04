@@ -6,10 +6,9 @@ from typing import Optional
 
 import numpy as np
 import torch
-from pandas import DataFrame, Series
+from pandas import DataFrame, Series  # type: ignore[import]
 from sentence_transformers import SentenceTransformer
 
-# from transformers import AutoConfig
 from activetigger.config import config
 from activetigger.functions import get_device
 from activetigger.tasks.base_task import BaseTask

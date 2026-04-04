@@ -1,8 +1,8 @@
 import datetime
-from datetime import timezone
 import gc
 import json
 import shutil
+from datetime import timezone
 from pathlib import Path
 from string import punctuation
 
@@ -385,7 +385,7 @@ class ComputeBertopic(BaseTask):
                 "The index of the embeddings and the texts do not match. "
                 "Please force the computation of embeddings or check your data."
                 "\n"
-                "Python error: {e}"
+                f"Python error: {e}"
             )
         if self.cols_embeddings:
             # NOTE: AM: Artefact?
@@ -540,7 +540,7 @@ class ComputeBertopic(BaseTask):
         """Creates an HTML report downloadable by the user"""
         # Creates a table for topic info with great tables
         topic_info = topic_info.copy()
-        topic_info["Representation"] = topic_info["Representation"].apply(lambda l: " - ".join(l))
+        topic_info["Representation"] = topic_info["Representation"].apply(lambda u: " - ".join(u))
         table_topics = (
             GT(topic_info.drop(columns=["Name", "Representative_Docs"]))
             .cols_align("center", "Count")
@@ -591,8 +591,10 @@ class ComputeBertopic(BaseTask):
                 min_number_of_element=-1,  # Need additional implementation
                 random_seed=self.random_seed,
             )
-        except:
-            fig_map = "You don't have enough elements to compute the hierarchy visualisation"
+        except Exception as e:
+            fig_map = "You don't have enough elements to compute the hierarchy visualisation" + str(
+                e
+            )
 
         # Create plotly figure for hierarchical representation
         fig_hierarchical = topic_model.visualize_hierarchy().update_layout(

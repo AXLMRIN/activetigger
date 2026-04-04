@@ -2,9 +2,8 @@ import csv
 import shutil
 import sys
 
-import pandas as pd
+import pandas as pd  # type: ignore[import]
 
-from activetigger.config import config
 from activetigger.datamodels import ProjectBaseModel, ProjectModel
 from activetigger.functions import slugify
 from activetigger.tasks.base_task import BaseTask

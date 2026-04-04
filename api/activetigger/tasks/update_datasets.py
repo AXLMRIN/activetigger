@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import pandas as pd
+import pandas as pd  # type: ignore[import]
 
 from activetigger.config import config
 from activetigger.datamodels import ProjectModel, ProjectUpdateModel
