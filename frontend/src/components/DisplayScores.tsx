@@ -36,7 +36,7 @@ export const DisplayScores: FC<DisplayScoresProps> = ({
   dataset = 'data',
   exclude_labels,
 }) => {
-  const [viewTable, _] = useState<boolean>(false);
+  const [viewTable] = useState<boolean>(false);
   const datasetClean = dataset.includes('test')
     ? 'test'
     : dataset.includes('valid')

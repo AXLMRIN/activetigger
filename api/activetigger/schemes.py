@@ -22,7 +22,7 @@ from activetigger.datamodels import (
 from activetigger.db import DBException
 from activetigger.db.manager import DatabaseManager
 from activetigger.db.projects import ProjectsService
-from activetigger.functions import clean_regex, regex_contains, slugify
+from activetigger.functions import clean_regex, regex_contains
 
 
 class SchemeCache:

@@ -165,7 +165,9 @@ export const DisplayTableStatisticsReactMultilabel: FC<DisplayTableStatisticsPro
         <>
           <select value={tableSelector} onChange={(e) => setTableSelector(e.target.value)}>
             {reorderedLabels.map((label) => (
-              <option key={label} value={label}>{label}</option>
+              <option key={label} value={label}>
+                {label}
+              </option>
             ))}
           </select>
           <div id="table-statistics-react">

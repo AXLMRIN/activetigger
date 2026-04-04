@@ -36,7 +36,11 @@ export const ProjectsPage: FC = () => {
         const projectSlug = project.parameters.project_slug.toLowerCase();
         const createdBy = project.created_by.toLowerCase();
 
-        return projectName.includes(searchValue) || projectSlug.includes(searchValue) || createdBy.includes(searchValue);
+        return (
+          projectName.includes(searchValue) ||
+          projectSlug.includes(searchValue) ||
+          createdBy.includes(searchValue)
+        );
       }),
     );
   };

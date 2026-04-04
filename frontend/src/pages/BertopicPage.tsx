@@ -318,9 +318,7 @@ export const BertopicPage: FC = () => {
               <button
                 className="btn-secondary-action"
                 style={{ whiteSpace: 'nowrap' }}
-                onClick={() =>
-                  currentBertopic ? exportTopicsToFeature(currentBertopic) : null
-                }
+                onClick={() => (currentBertopic ? exportTopicsToFeature(currentBertopic) : null)}
               >
                 Convert to feature <RiFileTransferLine size={20} />
               </button>

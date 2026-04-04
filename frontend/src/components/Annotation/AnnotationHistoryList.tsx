@@ -194,10 +194,7 @@ export const AnnotationHistoryList: FC = () => {
           <Modal.Title>Codebook</Modal.Title>
         </Modal.Header>
         <Modal.Body data-color-mode="light">
-          <MDEditor.Markdown
-            source={codebook || ''}
-            style={{ backgroundColor: 'transparent' }}
-          />
+          <MDEditor.Markdown source={codebook || ''} style={{ backgroundColor: 'transparent' }} />
         </Modal.Body>
       </Modal>
       {displayConfig.displayFormat === 'cards' ? (

@@ -1,5 +1,11 @@
 import { IoIosRadioButtonOff, IoIosRadioButtonOn } from 'react-icons/io';
-import { PiChatDuotone, PiEmptyBold, PiRobotDuotone, PiTagDuotone, PiUserCircle } from 'react-icons/pi';
+import {
+  PiChatDuotone,
+  PiEmptyBold,
+  PiRobotDuotone,
+  PiTagDuotone,
+  PiUserCircle,
+} from 'react-icons/pi';
 
 export const AnnotationIcon = PiTagDuotone;
 export const UserIcon = PiUserCircle;

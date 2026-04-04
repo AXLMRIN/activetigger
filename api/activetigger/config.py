@@ -37,7 +37,7 @@ def parse_environ(key: str, parse_method: Callable[[str], int | float], default:
     if key is None:
         raise ValueError(f"Key {key} is None")
     try:
-        return parse_method(os.environ.get(key))  # type: ignore
+        return parse_method(os.environ.get(key))  # type: ignore[arg-type]
     except Exception:
         return default
 
@@ -55,7 +55,7 @@ class Config(metaclass=_Singleton):
     # type sage configuration specification with default values coming from env variables or defaults
     data_path: str = os.environ.get("DATA_PATH", ".")
     user_hdd_max: float
-    mode: MODE = os.environ.get("MODE", str(MODE.DEV))  # type: ignore
+    mode: MODE = os.environ.get("MODE", str(MODE.DEV))  # type: ignore[assignment]
     secret_key: str = os.environ.get(
         "SECRET_KEY", "Q__zz0ew00R_YSwCFl-6VgS9dPbfDtFDnzHfd57t0EY="
     )  # FALSE KEY CHANGE IT IF NEEDED
