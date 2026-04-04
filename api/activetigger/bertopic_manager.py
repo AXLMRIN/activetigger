@@ -243,7 +243,7 @@ class Bertopic:
             df = pd.read_csv(path_model.joinpath("bertopic_topics.csv"), index_col=0)
             df.columns = df.columns.astype(str)
             df_list = df.reset_index().to_dict(orient="records")
-            return [TopicsOutModel(**item) for item in df_list]  # type: ignore[misc]
+            return [TopicsOutModel(**item) for item in df_list]  # type: ignore[misc] # ty: ignore[invalid-argument-type]
         else:
             raise FileNotFoundError(f"Model {name} does not exist.")
 
@@ -300,7 +300,7 @@ class Bertopic:
                 x=x,
                 y=y,
                 cluster_id=cluster_id,
-                label=cluster_id_label_mapper[cluster_id],
+                label=str(cluster_id_label_mapper[cluster_id]),
             )
             for x, y, cluster_id, node_id in zip(
                 projection["x"], projection["y"], projection["cluster"], projection.index.to_list()

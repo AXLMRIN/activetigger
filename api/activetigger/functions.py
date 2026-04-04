@@ -11,6 +11,7 @@ from urllib.parse import quote
 import bcrypt
 import numpy as np
 import pandas as pd  # type: ignore[import]
+import pandas._libs.missing  # noqa: F401
 import regex  # type: ignore[import]
 import spacy
 import torch
@@ -196,7 +197,6 @@ def sanitize_query_expression(expr: str, allowed_columns: list[str]) -> str:
 
     Raises ValueError if the expression contains disallowed tokens.
     """
-    import keyword
     import re
 
     expr = expr.strip()
@@ -252,7 +252,7 @@ def regex_contains(
     Like pandas str.contains but uses the `regex` module
     to support Unicode property escapes (e.g. \\p{Ll}).
     """
-    compiled = regex.compile(pattern, flags=0 if case else regex.IGNORECASE)
+    compiled = regex.compile(pattern, flags=0 if case else regex.IGNORECASE)  # ty: ignore[unresolved-attribute]
     return series.apply(lambda x: bool(compiled.search(str(x))) if pd.notna(x) else na)
 
 
@@ -323,33 +323,33 @@ def activate_probs(
     return label_prediction
 
 
-def find_best_threshold(
-    y_true: pd.Series, y_prob_pred: pd.Series
-) -> tuple[float, np.ndarray, np.ndarray]:
-    """
-    Find the best threshold using Precision-Recall curve and return the probabilities
-    as well as the activated matrix
-    https://www.geeksforgeeks.org/machine-learning/how-to-use-scikit-learns-tunedthresholdclassifiercv-for-threshold-optimization/
-    """
-    if y_true.shape != y_prob_pred.shape:
-        raise ValueError(
-            f"find_best_threshold: Shape missmatch {y_true.shape}!={y_prob_pred.shape}"
-        )
+# def find_best_threshold(
+#     y_true: pd.Series, y_prob_pred: pd.Series
+# ) -> tuple[float, np.ndarray, np.ndarray]:
+#     """
+#     Find the best threshold using Precision-Recall curve and return the probabilities
+#     as well as the activated matrix
+#     https://www.geeksforgeeks.org/machine-learning/how-to-use-scikit-learns-tunedthresholdclassifiercv-for-threshold-optimization/
+#     """
+#     if y_true.shape != y_prob_pred.shape:
+#         raise ValueError(
+#             f"find_best_threshold: Shape missmatch {y_true.shape}!={y_prob_pred.shape}"
+#         )
 
-    thresholds = list(set(y_prob_pred.reshape(-1)))
-    best_threshold, best_f1 = -1, -1
-    for t in thresholds:
-        y_pred = activate_probs(y_prob_pred, threshold=t, strategy="threshold")
-        f1 = f1_score(y_true=y_true, y_pred=y_pred, average="macro", zero_division=1)
-        if f1 > best_f1:
-            best_f1 = float(f1)
-            best_threshold = float(t)
-    return best_threshold
+#     thresholds = list(set(y_prob_pred.reshape(-1)))
+#     best_threshold, best_f1 = -1.0, -1.0
+#     for t in thresholds:
+#         y_pred = activate_probs(y_prob_pred.values(), threshold=t, strategy="threshold")
+#         f1 = f1_score(y_true=y_true, y_pred=y_pred, average="macro", zero_division=1)
+#         if f1 > best_f1:
+#             best_f1 = float(f1)
+#             best_threshold = float(t)
+#     return best_threshold
 
 
 def get_metrics_multiclass(
-    Y_true: pd.Series | np.ndarray,
-    Y_pred: pd.Series | np.ndarray,
+    Y_true: pd.Series,
+    Y_pred: pd.Series,
     id2label: dict[int, str] | None = None,
     texts: pd.Series | None = None,
     decimals: int = 3,
@@ -456,7 +456,7 @@ def get_metrics_multilabel(
     f1_label = {}
     recall_label = {}
     confusion = {}
-    dict_of_tables: dict[str : pd.DataFrame] = {}
+    dict_of_tables: dict[str, pd.DataFrame] = {}
     for id, label in id2label.items():
         parameters = {
             "y_true": Y_true[:, id],
@@ -636,7 +636,7 @@ def rejoin_annotation(list_of_annotations: list[str]) -> str | pd._libs.missing.
     return pd.NA
 
 
-def matrix_to_label(row: list[int], id2label: dict[int, str]) -> str:
+def matrix_to_label(row: list[int], id2label: dict[int, str]) -> list[str]:
     """
     For a row of labels: [1,0,1] => ["label1", "label3"]
     return the labels associated to the columns with a 1
@@ -660,7 +660,7 @@ def get_number_occurrences_per_label(annotations: pd.Series, labels: list[str]) 
 
 
 def remove_labels_without_enough_annotations(
-    df: pd.DataFrame, col_label: str, label_counts: list[str], class_min_freq: int
+    df: pd.DataFrame, col_label: str, label_counts: dict[str, int], class_min_freq: int
 ) -> tuple[pd.DataFrame, list[str]]:
     """
     For each row, remove annotations containing classes with not enough labels

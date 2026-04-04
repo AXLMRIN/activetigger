@@ -6,7 +6,7 @@ from typing import Any
 
 import pandas as pd  # type: ignore[import]
 import pyarrow.parquet as pq  # type: ignore[import]
-import regex
+import regex  # type: ignore[import]
 from pandas import DataFrame, Series
 
 from activetigger.config import config
@@ -217,7 +217,7 @@ class Features:
             new_content = pd.DataFrame(new_content)
 
         # change column name with a prefix
-        new_content.columns = [f"{name}__{i}" for i in new_content.columns]
+        new_content.columns = [f"{name}__{i}" for i in new_content.columns]  # type: ignore[assignment] # ty: ignore[invalid-assignment]
 
         # read data, add the feature to the dataset and save
         content = pd.read_parquet(self.path_features)
@@ -353,7 +353,7 @@ class Features:
             if e.kind == "feature"
         }
 
-    def __sbert_choose_model(self, parameters : dict):
+    def __sbert_choose_model(self, parameters: dict):
         if (
             "model" not in parameters
             or parameters["model"] is None
@@ -363,27 +363,29 @@ class Features:
         else:
             return parameters["model"]
 
-    def __create_pretty_name(self, kind: str, name: str, use_default_name : bool, parameters : dict) -> str:
+    def __create_pretty_name(
+        self, kind: str, name: str, use_default_name: bool, parameters: dict
+    ) -> str:
         pretty_name = f"{kind}_{name}"
         if kind == "sentence-embeddings":
-            if use_default_name: 
-                # use the model name 
+            if use_default_name:
+                # use the model name
                 model_name = self.__sbert_choose_model(parameters)
                 pretty_name = f"SBERT_{model_name.split('/')[-1]}"
-            else: 
+            else:
                 pretty_name = f"SBERT_{name}"
 
-            if "max_length_tokens" in parameters: 
+            if "max_length_tokens" in parameters:
                 pretty_name += f"-{int(parameters['max_length_tokens'])}tok"
 
         elif kind == "regex" and use_default_name and "value" in parameters:
-            pretty_name = f"regex_{parameters['value']}" 
+            pretty_name = f"regex_{parameters['value']}"
         elif (
-            kind == "dataset" and 
-            "dataset_col" in parameters and 
-            "dataset_type" in parameters and 
-            use_default_name
-        ): 
+            kind == "dataset"
+            and "dataset_col" in parameters
+            and "dataset_type" in parameters
+            and use_default_name
+        ):
             pretty_name = f"{parameters['dataset_col']}_{parameters['dataset_type'].lower()}"
         elif kind == "fasttext":
             if parameters["model"] is not None and parameters["model"] != "":
@@ -397,7 +399,15 @@ class Features:
             pass
         return pretty_name
 
-    def compute(self, df: pd.Series, name: str, use_default_name : bool,  kind: str, parameters: dict, username: str):
+    def compute(
+        self,
+        df: pd.Series,
+        name: str,
+        use_default_name: bool,
+        kind: str,
+        parameters: dict,
+        username: str,
+    ):
         """
         Compute new feature
         TODO : the parameters management is really bad
@@ -439,6 +449,7 @@ class Features:
             # convert the column to a specific format
             if len(column.dropna()) != len(column):
                 raise ValueError("Column contains null values")
+            column_encoded: pd.DataFrame | pd.Series
             if parameters["dataset_type"] == "Numeric":
                 try:
                     column_encoded = column.apply(float)
@@ -483,7 +494,7 @@ class Features:
                 ),
                 queue="gpu",
             )
-            
+
             parameters = {
                 "model": model,
                 "name": name,
@@ -504,7 +515,7 @@ class Features:
                     model=parameters["model"],
                 ),
             )
-            
+
             parameters = {
                 "model": parameters["model"],
                 "name": name,
@@ -529,7 +540,7 @@ class Features:
                 "dfm_norm": parameters.get("dfm_norm", None),
                 "dfm_log": parameters.get("dfm_log", None),
             }
-        
+
         if unique_id:
             self.computing.append(
                 FeatureComputing(

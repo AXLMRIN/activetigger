@@ -195,7 +195,7 @@ class Generations:
         Apply filters
         """
         if "remove_punct" in filters:
-            answers = cast(pd.Series, answers.apply(remove_punctuation))
+            answers = answers.apply(remove_punctuation)
         if "remove_spaces" in filters:
             answers = answers.str.replace(r"\s+", " ")
         if "lowercase" in filters:

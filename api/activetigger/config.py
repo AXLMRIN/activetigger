@@ -3,7 +3,7 @@ from collections.abc import Callable
 from enum import StrEnum
 from pathlib import Path
 
-import pytz  # type: ignore
+import pytz
 import yaml
 from dotenv import load_dotenv
 
@@ -87,10 +87,11 @@ class Config(metaclass=_Singleton):
     def __init__(self):
         # for variables which needs cast or other treatment we do that work in the constructor
         self.cpu_only = os.environ.get("CPU_ONLY", "false").lower() in ("true", "1", "yes")
+        mode_env = os.environ.get("MODE")
         self.mode = (
-            os.environ.get("MODE")
-            if os.environ.get("MODE") is not None and MODE.has_member_key(os.environ.get("MODE"))
-            else "dev"
+            MODE(mode_env)
+            if mode_env is not None and MODE.has_member_key(mode_env)
+            else MODE("dev")
         )
         self.user_hdd_max = parse_environ("ACTIVETIGGER_USER_HDD_MAX", float, 30.0)
         self.max_loaded_projects = parse_environ("MAX_LOADED_PROJECTS", int, 30)

@@ -491,8 +491,8 @@ class LanguageModels:
                 name=element.model_name,
                 user=element.user,
                 status=element.status,
-                scheme=element.scheme,
-                params=element.params,
+                scheme=element.scheme or "default",
+                params=element.params or {},
                 path=str(
                     self.path.parent.joinpath("bertopic")
                     .joinpath("runs")

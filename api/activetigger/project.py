@@ -854,12 +854,12 @@ class Project:
         if next.selection == "maxprob" and proba is not None:
             if next.label_prob is None:
                 raise Exception("Label is required for maxprob selection")
-            ss = (
+            ss_maxprob = (
                 proba[f][next.label_prob]
                 .drop(next.history, errors="ignore")
                 .sort_values(ascending=False)
             )
-            element_id = ss.index[0]
+            element_id = ss_maxprob.index[0]
             n_sample = f.sum()
             indicator = f"probability: {round(proba.loc[element_id, next.label_prob], 2)}"
 
@@ -996,7 +996,7 @@ class Project:
             # extract context
             context = cast(
                 dict[str, Any],
-                self.data.train.loc[element.element_id, self.params.cols_context]  # type: ignore[index]
+                self.data.train.loc[element.element_id, self.params.cols_context]  # type: ignore[index] # ty: ignore[invalid-argument-type]
                 .fillna("NA")
                 .astype(str)
                 .to_dict(),
@@ -1434,8 +1434,9 @@ class Project:
         use_dichotomization = (
             bert.dichotomize is not None and bert.dichotomize != "No dichotomization"
         )
+
         if use_dichotomization:
-            df, scheme_labels = dichotomize(df, "labels", bert.dichotomize)
+            df, scheme_labels = dichotomize(df, "labels", str(bert.dichotomize))
             bert.name = f"{bert.name}_multilabel_on_{bert.dichotomize}"
             # Force training kind and scheme_labels
             training_kind = "multiclass"
@@ -1558,6 +1559,8 @@ class Project:
         """
         Fetch all necessary data and launch prediction process
         """
+        if datasets is None:
+            raise Exception("No dataset available for prediction")
         sm = self.quickmodels.get(model_name)
         if sm is None:
             raise Exception(f"Quick model {model_name} not found")
@@ -1776,7 +1779,7 @@ class Project:
                         )
             # clean the process from the list and the queue
             finally:
-                self.clean_process(e)
+                self.clean_process(e)  # ty: ignore[invalid-argument-type]
 
         # if there are predictions, add them
         if len(add_predictions) > 0:

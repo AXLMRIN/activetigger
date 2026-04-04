@@ -202,7 +202,7 @@ class QuickModels:
             "exclude_labels": exclude_labels,
             "test_size": test_size,
         }
-        unique_id = self.queue.add_task("train_quickmodel", project_slug, TrainMLMultiClass(**args))
+        unique_id = self.queue.add_task("train_quickmodel", project_slug, TrainMLMultiClass(**args))  # ty: ignore[invalid-argument-type]
         del args
 
         req = QuickModelComputing(

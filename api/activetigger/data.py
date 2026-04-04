@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 from pandas import DataFrame
@@ -60,7 +61,8 @@ class Data:
         """
         Strips any leading/trailing white spaces in columns
         """
-        for col in df.select_dtypes(include = 'str'):
+        cols = cast(list[str], df.select_dtypes(include="str"))  # type: ignore[assignment]
+        for col in cols:
             df[col] = df[col].str.strip()
         return df
 

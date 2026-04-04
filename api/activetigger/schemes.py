@@ -1,11 +1,11 @@
 import datetime
 from datetime import timezone
 from io import StringIO
-from typing import Tuple, cast
+from typing import Tuple
 
 import pandas as pd
 from pandas import DataFrame
-from sklearn.metrics import cohen_kappa_score  # type: ignore
+from sklearn.metrics import cohen_kappa_score
 
 from activetigger.data import Data
 from activetigger.datamodels import (
@@ -394,10 +394,10 @@ class Schemes:
         df = self.get_scheme(scheme, complete=True, datasets=[dataset])
         # build dataset
         if mode == "tagged":
-            df = cast(DataFrame, df[df["labels"].notnull()])
+            df = df[df["labels"].notnull()]
 
         if mode == "untagged":
-            df = cast(DataFrame, df[df["labels"].isnull()])
+            df = df[df["labels"].isnull()]
 
         if n_elements > len(df):
             n_elements = len(df)
@@ -888,7 +888,7 @@ class Schemes:
         percentage = 0
         if n_overlapping_annotations > 0:
             score_ck = cohen_kappa_score(df["schemeA"], df["schemeB"])
-            percentage = len(df[df["schemeA"] == df["schemeB"]]) / n_overlapping_annotations  # type: ignore
+            percentage = len(df[df["schemeA"] == df["schemeB"]]) / n_overlapping_annotations
 
         return CompareSchemesModel(
             datetime=datetime.datetime.now(timezone.utc),
