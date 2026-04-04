@@ -19,7 +19,7 @@ from typing import cast
 import pandas as pd  # type: ignore[import]
 import psutil  # type: ignore[import]
 import pyarrow.parquet as pq  # type: ignore[import]
-from jose import jwt
+from jose import jwt  # type: ignore[import-untyped]
 
 from activetigger import __version__
 from activetigger.config import config

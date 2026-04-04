@@ -5,7 +5,7 @@ from typing import Tuple
 
 import pandas as pd
 from pandas import DataFrame
-from sklearn.metrics import cohen_kappa_score
+from sklearn.metrics import cohen_kappa_score  # type: ignore[import-untyped]
 
 from activetigger.data import Data
 from activetigger.datamodels import (
@@ -885,7 +885,7 @@ class Schemes:
         # compute scores
         n_overlapping_annotations = len(df)
         score_ck = None
-        percentage = 0
+        percentage: float = 0
         if n_overlapping_annotations > 0:
             score_ck = cohen_kappa_score(df["schemeA"], df["schemeB"])
             percentage = len(df[df["schemeA"] == df["schemeB"]]) / n_overlapping_annotations

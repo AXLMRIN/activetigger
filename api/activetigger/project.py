@@ -996,7 +996,7 @@ class Project:
             # extract context
             context = cast(
                 dict[str, Any],
-                self.data.train.loc[element.element_id, self.params.cols_context]  # type: ignore[index] # ty: ignore[invalid-argument-type]
+                self.data.train.loc[element.element_id, self.params.cols_context]  # type: ignore[index,union-attr] # ty: ignore[invalid-argument-type]
                 .fillna("NA")
                 .astype(str)
                 .to_dict(),
