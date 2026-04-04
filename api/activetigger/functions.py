@@ -252,7 +252,7 @@ def regex_contains(
     Like pandas str.contains but uses the `regex` module
     to support Unicode property escapes (e.g. \\p{Ll}).
     """
-    compiled = regex.compile(pattern, flags=0 if case else regex.IGNORECASE)  # ty: ignore[unresolved-attribute]
+    compiled = regex.compile(pattern, flags=0 if case else regex.IGNORECASE)
     return series.apply(lambda x: bool(compiled.search(str(x))) if pd.notna(x) else na)
 
 

@@ -27,7 +27,7 @@ class HuggingFace(GenerationModelClient):
         except InferenceTimeoutError as te:
             raise Exception from te
         except HTTPError as e:
-            msg = e.response.content.decode("utf-8")
+            msg = e.response.content.decode("utf-8")  # ty: ignore[unresolved-attribute]
             raise Exception(f"HTTP error from endpoint: {msg}") from e
         except Exception as e:
             raise Exception from e

@@ -106,21 +106,21 @@ def compute_class_weights(dataset, label_key="labels"):
 
 # CustomTrainer is a subclass of Trainer that allows for custom loss computation.
 # https://stackoverflow.com/questions/70979844/using-weights-with-transformers-huggingface
-class CustomTrainer(Trainer):  # ty: ignore[unsupported-base]
+class CustomTrainer(Trainer):
     def __init__(self, *args, class_weights=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.class_weights = class_weights
         print("CustomTrainer initialized with class weights:", self.class_weights)
 
-    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):  # ty: ignore[invalid-method-override]
         labels = inputs.get("labels")
         outputs = model(**inputs)
         logits = outputs.get("logits")
 
         # Convert one-hot labels to class indices for CrossEntropyLoss
         label_indices = labels.argmax(dim=-1)
-        loss_fct = nn.CrossEntropyLoss(weight=self.class_weights.to(logits.device))
-        loss = loss_fct(logits.view(-1, self.model.config.num_labels), label_indices.view(-1))
+        loss_fct = nn.CrossEntropyLoss(weight=self.class_weights.to(logits.device))  # ty: ignore[unresolved-attribute]
+        loss = loss_fct(logits.view(-1, self.model.config.num_labels), label_indices.view(-1))  # ty: ignore[unresolved-attribute]
         return (loss, outputs) if return_outputs else loss
 
 
@@ -555,7 +555,7 @@ class TrainBert(BaseTask):
 
             # predict on the data (separation validation set and training set)
             task_timer.start("evaluate")
-            predictions_train = trainer.predict(self.ds["train"])  # type: ignore[attr-defined] # ty: ignore[unresolved-attribute, invalid-argument-type]
+            predictions_train = trainer.predict(self.ds["train"])  # type: ignore[attr-defined] # ty: ignore[invalid-argument-type]
 
             # Compute the metrics
             df_train_results = self.ds["train"].to_pandas().set_index("id")  # ty: ignore[unresolved-attribute]
@@ -605,7 +605,7 @@ class TrainBert(BaseTask):
                 )
 
             if "test" in self.ds:
-                predictions_test = trainer.predict(self.ds["test"])  # type: ignore[attr-defined] # ty: ignore[unresolved-attribute, invalid-argument-type]
+                predictions_test = trainer.predict(self.ds["test"])  # type: ignore[attr-defined] # ty: ignore[invalid-argument-type]
                 df_test_results = self.ds["test"].to_pandas().set_index("id")  # ty: ignore[unresolved-attribute]
 
                 df_test_results["true_label-matrix"] = predictions_test.label_ids.tolist()  # ty: ignore[unresolved-attribute]

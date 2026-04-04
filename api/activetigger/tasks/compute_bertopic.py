@@ -17,7 +17,7 @@ from bertopic import BERTopic  # type: ignore[import]
 from great_tables import GT, loc, style
 from jinja2 import Template
 from nltk.corpus import stopwords as nltk_stopwords  # type: ignore[import]
-from simplemma import lemmatize  # type: ignore[import] # ty: ignore[unresolved-import]
+from simplemma import lemmatize  # type: ignore[import]
 from sklearn.feature_extraction.text import CountVectorizer  # type: ignore[import]
 from slugify import slugify  # type: ignore[import]
 
