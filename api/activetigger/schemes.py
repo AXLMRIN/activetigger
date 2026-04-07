@@ -257,6 +257,8 @@ class Schemes:
 
         df["current_label"] = current_labels
         df = df[f_multi].reset_index()
+        # replace NaN with None so pydantic accepts Optional[str]
+        df["current_label"] = df["current_label"].astype(object).where(df["current_label"].notna(), None)
 
         # return the result
         return df, users, agreement_stats

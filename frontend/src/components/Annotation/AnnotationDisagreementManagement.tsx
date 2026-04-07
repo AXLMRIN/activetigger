@@ -70,24 +70,31 @@ export const AnnotationDisagreementManagement: FC<AnnotationDisagreementManageme
     if (!tableDisagreement) return null;
     if (!selectedUser) return { '': tableDisagreement };
 
-    // filter to elements annotated by selected user (excluding no-label placeholder)
-    const filtered = tableDisagreement.filter((element) => {
-      const annotations = element.annotations as Record<string, string | null> | undefined;
-      if (!annotations) return false;
-      const userLabel = annotations[selectedUser];
-      return userLabel && userLabel !== '-----';
-    });
+    const NOT_TAGGED = 'Not tagged by this user';
 
-    // group by the selected user's label
-    const groups: Record<string, typeof filtered> = {};
-    for (const element of filtered) {
-      const annotations = element.annotations as Record<string, string>;
-      const userLabel = annotations[selectedUser];
-      if (!groups[userLabel]) groups[userLabel] = [];
-      groups[userLabel].push(element);
+    // initialize groups in scheme label order for consistent sorting across users
+    const groups: Record<string, typeof tableDisagreement> = {};
+    for (const label of availableLabels || []) {
+      groups[label] = [];
     }
-    return groups;
-  }, [tableDisagreement, selectedUser]);
+    groups[NOT_TAGGED] = [];
+
+    for (const element of tableDisagreement) {
+      const annotations = element.annotations as Record<string, string | null> | undefined;
+      if (!annotations) continue;
+      const userLabel = annotations[selectedUser];
+      if (userLabel && userLabel !== '-----') {
+        if (!groups[userLabel]) groups[userLabel] = [];
+        groups[userLabel].push(element);
+      } else {
+        // keep elements untagged by selected user but with disagreement between others
+        groups[NOT_TAGGED].push(element);
+      }
+    }
+
+    // drop empty groups
+    return Object.fromEntries(Object.entries(groups).filter(([, els]) => els.length > 0));
+  }, [tableDisagreement, selectedUser, availableLabels]);
 
   // render a single disagreement element
   const renderElement = (element: NonNullable<typeof tableDisagreement>[0], index: number) => (
