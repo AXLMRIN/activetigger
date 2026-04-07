@@ -380,36 +380,35 @@ class LanguageModels:
         """
         Export predict file if exists
         """
-        # get the predition file
+        # get the prediction file
         path = self.path.joinpath(name).joinpath(file_name)
         if not path.exists():
             raise FileNotFoundError(
                 f"The file {file_name} does not exist for this model, please run prediction again."
             )
-        df = pd.read_parquet(path)
 
-        # rename id_external to original column name for consistency with other exports
-        if col_id is not None and "id_external" in df.columns:
-            df.rename(columns={"id_external": col_id}, inplace=True)
-
-        # change the format
-        if format == "parquet":
-            pass
-        elif format == "csv":
-            file_name = file_name + ".csv"
-            path = self.path.joinpath(name).joinpath(file_name)
-            df.to_csv(path)
-        elif format == "xlsx":
-            file_name = file_name + ".xlsx"
-            path = self.path.joinpath(name).joinpath(file_name)
-            df.to_excel(path)
-        else:
+        if format not in ("parquet", "csv", "xlsx"):
             raise Exception("Format not supported")
 
-        return FileResponse(
-            path=path,
-            filename=file_name,
-        )
+        # parquet: serve the source file directly (no conversion)
+        if format == "parquet":
+            return FileResponse(path=path, filename=file_name)
+
+        # cache the converted file next to the source; regenerate only if stale
+        ext = "csv" if format == "csv" else "xlsx"
+        out_name = f"{file_name}.{ext}"
+        out_path = self.path.joinpath(name).joinpath(out_name)
+        if not out_path.exists() or out_path.stat().st_mtime < path.stat().st_mtime:
+            df = pd.read_parquet(path)
+            # rename id_external to original column name for consistency with other exports
+            if col_id is not None and "id_external" in df.columns:
+                df.rename(columns={"id_external": col_id}, inplace=True)
+            if format == "csv":
+                df.to_csv(out_path, index=False)
+            else:
+                df.to_excel(out_path, index=False)
+
+        return FileResponse(path=out_path, filename=out_name)
 
     def export_bert(self, name: str) -> StaticFileModel:
         """

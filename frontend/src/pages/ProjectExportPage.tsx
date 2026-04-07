@@ -2,6 +2,7 @@ import { FC, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { Tab, Tabs } from 'react-bootstrap';
+import PulseLoader from 'react-spinners/PulseLoader';
 import { ProjectPageLayout } from '../components/layout/ProjectPageLayout';
 import { ModelPredict } from '../components/ModelPredict';
 import {
@@ -32,6 +33,17 @@ export const ProjectExportPage: FC = () => {
   const [format, setFormat] = useState<string>('csv');
   const [features, setFeatures] = useState<string[] | null>(null);
   const [model, setModel] = useState<string | null>(null);
+  const [predictionLoading, setPredictionLoading] = useState<string | null>(null);
+
+  const downloadPrediction = async (dataset: 'all' | 'test' | 'external') => {
+    if (!model) return;
+    setPredictionLoading(dataset);
+    try {
+      await getPredictionsFile(model, format, dataset, currentScheme);
+    } finally {
+      setPredictionLoading(null);
+    }
+  };
 
   const availableFeatures = project?.features.available ? project?.features.available : [];
   const availableProjection =
@@ -197,27 +209,32 @@ export const ProjectExportPage: FC = () => {
                     {availablePredictionAll && (
                       <button
                         className="btn-secondary-action"
-                        onClick={() => {
-                          if (model) {
-                            getPredictionsFile(model, format, 'all', currentScheme);
-                          }
-                        }}
+                        disabled={predictionLoading !== null}
+                        onClick={() => downloadPrediction('all')}
                       >
                         Export prediction complete dataset
+                        {predictionLoading === 'all' && (
+                          <PulseLoader color="white" size={6} className="ms-2" />
+                        )}
                       </button>
+                    )}
+                    {predictionLoading === 'all' && (
+                      <span className="ms-2 text-muted">
+                        Preparing file, this may take a while for large datasets...
+                      </span>
                     )}
                   </div>
                   <div>
                     {availablePredictionTest && (
                       <button
                         className="btn-secondary-action"
-                        onClick={() => {
-                          if (model) {
-                            getPredictionsFile(model, format, 'test', currentScheme);
-                          }
-                        }}
+                        disabled={predictionLoading !== null}
+                        onClick={() => downloadPrediction('test')}
                       >
                         Export prediction testset
+                        {predictionLoading === 'test' && (
+                          <PulseLoader color="white" size={6} className="ms-2" />
+                        )}
                       </button>
                     )}
                   </div>
@@ -225,13 +242,13 @@ export const ProjectExportPage: FC = () => {
                     {availablePredictionExternal && (
                       <button
                         className="btn-secondary-action mt-4"
-                        onClick={() => {
-                          if (model) {
-                            getPredictionsFile(model, format, 'external', currentScheme);
-                          }
-                        }}
+                        disabled={predictionLoading !== null}
+                        onClick={() => downloadPrediction('external')}
                       >
                         Export prediction external dataset
+                        {predictionLoading === 'external' && (
+                          <PulseLoader color="white" size={6} className="ms-2" />
+                        )}
                       </button>
                     )}
                   </div>
