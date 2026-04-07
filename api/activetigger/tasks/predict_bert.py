@@ -15,6 +15,7 @@ from transformers import (  # type: ignore[import]
     AutoModelForSequenceClassification,
     AutoTokenizer,
 )
+from scipy.stats import entropy
 
 from activetigger.data import Data
 from activetigger.datamodels import MLStatisticsModel, ReturnTaskPredictModel, TextDatasetModel
@@ -182,8 +183,13 @@ class PredictBertMultiClass(BaseTask):
             index=self.df.index,
         )
 
-        entropy = -1 * (prob_predictions * np.log(prob_predictions)).sum(axis=1)
-        pred["entropy"] = entropy
+        pred["entropy"] = entropy(prob_predictions, axis=1)
+
+        # Add entropy-LABEL defined as the entropy of p(A) / 1-p(A)
+        for label in list(id2label.values()):
+            prob_A_not_A = np.array([pred[label], 1 - pred[label]]).reshape(-1,2)
+            pred[f"entropy-{label}"] = entropy(prob_A_not_A, axis=1)
+
         if self.training_kind == "multiclass":
             y_pred = activate_probs(
                 probs=prob_predictions, strategy="max", force_max_1_per_row=True
