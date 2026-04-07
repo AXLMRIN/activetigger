@@ -161,6 +161,7 @@ export interface DisplayConfig {
   highlightText: string;
   labelsOrder?: string[];
   forceOneColumnLayout?: boolean;
+  forceCompleteLabel?: boolean;
   displayFormat?: 'table' | 'cards';
 }
 

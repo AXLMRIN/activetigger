@@ -185,6 +185,23 @@ export const TagDisplayParameters: FC = () => {
         Force bottom labels
       </label>
 
+      <label title="Wrap label text and shrink the font so the full label fits inside the existing button. The button size is unchanged.">
+        <input
+          type="checkbox"
+          checked={!!displayConfig.forceCompleteLabel}
+          onChange={(_) => {
+            setAppContext((prev) => ({
+              ...prev,
+              displayConfig: {
+                ...displayConfig,
+                forceCompleteLabel: !displayConfig.forceCompleteLabel,
+              },
+            }));
+          }}
+        />
+        Force complete label
+      </label>
+
       <label>Highlight words in the text</label>
       <textarea
         placeholder="Line break to separate"

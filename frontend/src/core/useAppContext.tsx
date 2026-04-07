@@ -20,6 +20,7 @@ export const DEFAULT_CONTEXT: AppContextValue = {
     highlightText: '',
     numberOfTokens: 512,
     forceOneColumnLayout: false,
+    forceCompleteLabel: false,
     displayFormat: 'cards',
   },
   selectionConfig: {

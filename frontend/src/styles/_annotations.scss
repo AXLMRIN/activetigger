@@ -460,3 +460,23 @@
     text-align: end;
   }
 }
+
+/**
+* FORCE COMPLETE LABEL
+* Wraps text on multiple lines and shrinks the font so long labels
+* fit inside the existing fixed-size button without overflow.
+*/
+.label-full {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.05;
+  font-size: 0.72rem;
+  text-align: start;
+  flex-shrink: 1;
+  flex-grow: 1;
+  min-width: 0;
+}

@@ -146,7 +146,7 @@ export const MulticlassInput: FC<MulticlassInputProps> = ({
                 <EmptyAnnotationIcon />
               )
             ) : null}
-            <MiddleEllipsis label={e.label} />
+            <MiddleEllipsis label={e.label} forceComplete={displayConfig.forceCompleteLabel} />
             {availableLabels.length < 10 && <span className="badge hotkey">{i + 1}</span>}
           </button>
         ))
@@ -177,7 +177,10 @@ export const MulticlassInput: FC<MulticlassInputProps> = ({
               postAnnotation(e.currentTarget.value, elementId, comment);
             }}
           >
-            <MiddleEllipsis label={element?.predict.label} />{' '}
+            <MiddleEllipsis
+              label={element?.predict.label}
+              forceComplete={displayConfig.forceCompleteLabel}
+            />{' '}
             <span className="badge m-0 p-1" id="predict-probability">
               p={predict_proba}
             </span>
