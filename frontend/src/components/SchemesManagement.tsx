@@ -257,9 +257,7 @@ export const SchemesManagement: FC<SchemeManagementProps> = ({
             <label htmlFor="scheme-selected">Type</label>
             <select id="scheme_kind" {...register('kind')}>
               <option value="multiclass">Multiclass</option>
-              <option value="multilabel">
-                Multilabel (experimental - only some features implemented)
-              </option>
+              <option value="multilabel">Multilabel</option>
               <option value="span">Span (experimental - only annotation)</option>
             </select>
             <details style={{ marginTop: '10px' }}>
