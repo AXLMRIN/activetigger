@@ -187,7 +187,7 @@ class PredictBertMultiClass(BaseTask):
 
         # Add entropy-LABEL defined as the entropy of p(A) / 1-p(A)
         for label in list(id2label.values()):
-            prob_A_not_A = np.array([pred[label], 1 - pred[label]]).reshape(-1,2)
+            prob_A_not_A = np.column_stack([pred[label], 1 - pred[label]])
             pred[f"entropy-{label}"] = entropy(prob_A_not_A, axis=1)
 
         if self.training_kind == "multiclass":

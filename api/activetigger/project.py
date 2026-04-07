@@ -870,7 +870,7 @@ class Project:
                 ss_active = (
                     proba[f'entropy-{next.label_prob}']
                     .drop(next.history, errors="ignore")
-                    .sort_values(ascending=True)
+                    .sort_values(ascending=False)
                 )
                 element_id = ss_active.index[0]
                 n_sample = f.sum()
