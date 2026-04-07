@@ -866,18 +866,14 @@ class Project:
         # active: two modes depending on whether label_prob is set
         if next.selection == "active" and proba is not None:
             if next.label_prob is not None:
-                # active LABEL: filter to texts predicted as label, sort by ascending prob
-                f_predicted = proba["prediction"] == next.label_prob
-                f_active = f & f_predicted
-                if f_active.sum() == 0:
-                    raise ValueError(f"No element predicted as '{next.label_prob}' available.")
+                # active LABEL: use entropy-LABEL defined as the entropy for the probabilities p(A)/1-p(A)
                 ss_active = (
-                    proba[f_active][next.label_prob]
+                    proba[f'entropy-{next.label_prob}']
                     .drop(next.history, errors="ignore")
                     .sort_values(ascending=True)
                 )
                 element_id = ss_active.index[0]
-                n_sample = f_active.sum()
+                n_sample = f.sum()
                 indicator = f"probability: {round(proba.loc[element_id, next.label_prob], 2)}"
             else:
                 # active (no label): higher entropy (uncertainty sampling)

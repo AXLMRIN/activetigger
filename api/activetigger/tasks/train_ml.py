@@ -264,6 +264,10 @@ class TrainMLMultiClass(BaseTask):
             proba = pd.DataFrame(proba_values, columns=self.model.classes_, index=self.X.index)  # ty: ignore[unresolved-attribute]
             proba["prediction"] = proba.idxmax(axis=1)
             proba["entropy"] = entropy(proba_values, axis=1)
+            # Add entropy-LABEL defined as the entropy of p(A) / 1-p(A)
+            for label in self.model.classes_:
+                prob_A_not_A = np.array([proba[label], 1 - proba[label]]).reshape(-1,2)
+                proba[f"entropy-{label}"] = entropy(prob_A_not_A, axis=1)
         except Exception as e:
             raise Exception((f"Problem calculating the entropy (TrainMLMultiClass.__call__)\nError: {e}"))
 
