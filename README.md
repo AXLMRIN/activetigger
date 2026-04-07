@@ -205,7 +205,7 @@ A python client is under development to interact with the API https://github.com
 
 ## Documentation
 
-The documentation is [here](https://emilienschultz.github.io/activetigger/docs/)
+The documentation is [here](https://activetigger/documentation)
 
 ## Contributing
 

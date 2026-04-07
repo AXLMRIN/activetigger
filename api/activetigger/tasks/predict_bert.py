@@ -11,11 +11,11 @@ import numpy as np
 import pandas as pd  # type: ignore[import]
 import torch
 from pandas import DataFrame  # type: ignore[import]
+from scipy.stats import entropy  # type: ignore[import]
 from transformers import (  # type: ignore[import]
     AutoModelForSequenceClassification,
     AutoTokenizer,
 )
-from scipy.stats import entropy
 
 from activetigger.data import Data
 from activetigger.datamodels import MLStatisticsModel, ReturnTaskPredictModel, TextDatasetModel
