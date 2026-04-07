@@ -265,7 +265,7 @@ class TrainMLMultiClass(BaseTask):
             proba["prediction"] = proba.idxmax(axis=1)
             proba["entropy"] = entropy(proba_values, axis=1)
             # Add entropy-LABEL defined as the entropy of p(A) / 1-p(A)
-            for label in self.model.classes_:
+            for label in self.model.classes_:  # ty: ignore[unresolved-attribute]
                 prob_A_not_A = np.column_stack([proba[label], 1 - proba[label]])
                 proba[f"entropy-{label}"] = entropy(prob_A_not_A, axis=1)
         except Exception as e:
