@@ -30,7 +30,10 @@ export const AnnotationDisagreementManagement: FC<AnnotationDisagreementManageme
     : 'multiclass';
 
   // available labels from context
-  const availableLabels = currentScheme ? project?.schemes?.available?.[currentScheme]?.labels : [];
+  const availableLabels = useMemo(
+    () => (currentScheme ? project?.schemes?.available?.[currentScheme]?.labels : []),
+    [currentScheme, project],
+  );
 
   // get disagreement table
   const { tableDisagreement, users, agreementStats, reFetchTable } = useTableDisagreement(
