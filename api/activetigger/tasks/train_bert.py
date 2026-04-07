@@ -122,11 +122,12 @@ class CustomTrainer(Trainer):
         # Convert one-hot labels to class indices for CrossEntropyLoss
         label_indices = labels.argmax(dim=-1)
         loss_fct = nn.CrossEntropyLoss(
-            weight=self.class_weights.to(logits.device)
-        )  # ty: ignore[unresolved-attribute]
+            weight=self.class_weights.to(logits.device),  # ty: ignore[unresolved-attribute]
+        )
         loss = loss_fct(
-            logits.view(-1, self.model.config.num_labels), label_indices.view(-1)
-        )  # ty: ignore[unresolved-attribute]
+            logits.view(-1, self.model.config.num_labels),  # ty: ignore[unresolved-attribute]
+            label_indices.view(-1),
+        )
         return (loss, outputs) if return_outputs else loss
 
 
@@ -510,8 +511,10 @@ class TrainBert(BaseTask):
         device = get_device()
 
         self.df = self.__check_data(
-            self.df, self.col_label, self.col_text
-        )  # ty: ignore[invalid-argument-type]
+            self.df,  # ty: ignore[invalid-argument-type]
+            self.col_label,
+            self.col_text,
+        )
         labels, label2id, id2label = self.__retrieve_labels(self.scheme_labels)
         self.ds = self.__transform_to_dataset(
             self.training_kind, self.df, self.col_label, self.col_text, label2id
@@ -567,20 +570,21 @@ class TrainBert(BaseTask):
 
             # Compute the metrics
             df_train_results = (
-                self.ds["train"].to_pandas().set_index("id")
-            )  # ty: ignore[unresolved-attribute]
+                self.ds["train"].to_pandas().set_index("id")  # ty: ignore[unresolved-attribute]
+            )
 
             df_train_results["true_label-matrix"] = (
-                predictions_train.label_ids.tolist()
-            )  # ty: ignore[unresolved-attribute]
+                predictions_train.label_ids.tolist()  # ty: ignore[unresolved-attribute]
+            )
             df_train_results["true_label"] = [
-                "|".join(matrix_to_label(row, id2label))
-                for row in predictions_train.label_ids  # ty: ignore[invalid-argument-type, not-iterable]
+                "|".join(matrix_to_label(row, id2label))  # ty: ignore[invalid-argument-type]
+                for row in predictions_train.label_ids  # ty: ignore[not-iterable]
             ]
 
             y_prob_pred = logits_to_probs(
-                predictions_train.predictions, self.training_kind
-            )  # ty: ignore[invalid-argument-type]
+                predictions_train.predictions,  # ty: ignore[invalid-argument-type]
+                self.training_kind,
+            )
 
             if self.training_kind == "multiclass":
                 labels_predicted = activate_probs(
@@ -622,20 +626,21 @@ class TrainBert(BaseTask):
             if "test" in self.ds:
                 predictions_test = trainer.predict(self.ds["test"])  # type: ignore[attr-defined] # ty: ignore[invalid-argument-type]
                 df_test_results = (
-                    self.ds["test"].to_pandas().set_index("id")
-                )  # ty: ignore[unresolved-attribute]
+                    self.ds["test"].to_pandas().set_index("id")  # ty: ignore[unresolved-attribute]
+                )
 
                 df_test_results["true_label-matrix"] = (
-                    predictions_test.label_ids.tolist()
-                )  # ty: ignore[unresolved-attribute]
+                    predictions_test.label_ids.tolist()  # ty: ignore[unresolved-attribute]
+                )
                 df_test_results["true_label"] = [
-                    "|".join(matrix_to_label(row, id2label))
-                    for row in predictions_test.label_ids  # ty: ignore[invalid-argument-type, not-iterable]
+                    "|".join(matrix_to_label(row, id2label))  # ty: ignore[invalid-argument-type]
+                    for row in predictions_test.label_ids  # ty: ignore[not-iterable]
                 ]
 
                 y_prob_pred = logits_to_probs(
-                    predictions_test.predictions, kind=self.training_kind
-                )  # ty: ignore[invalid-argument-type]
+                    predictions_test.predictions,  # ty: ignore[invalid-argument-type]
+                    kind=self.training_kind,
+                )
                 if self.training_kind == "multiclass":
                     y_label_pred = activate_probs(
                         y_prob_pred, strategy="max", force_max_1_per_row=True
