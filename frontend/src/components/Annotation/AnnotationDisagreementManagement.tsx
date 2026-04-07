@@ -132,7 +132,7 @@ export const AnnotationDisagreementManagement: FC<AnnotationDisagreementManageme
                 setChanges({ ...changes, [element.id as string]: event.target.value })
               }
             >
-              <option>Arbitation</option>
+              <option>Resolve</option>
               {(availableLabels || []).map((e) => (
                 <option key={e}>{e}</option>
               ))}
