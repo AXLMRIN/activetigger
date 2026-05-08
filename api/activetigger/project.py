@@ -17,7 +17,10 @@ from activetigger.bertopic_manager import Bertopic
 from activetigger.config import config
 from activetigger.data import Data
 from activetigger.datamodels import (
+    ActionModel,
     ActiveModel,
+    AnnotationModel,
+    AnnotationsDataModel,
     AuthUserModel,
     BertModelModel,
     BertopicComputing,
@@ -42,12 +45,18 @@ from activetigger.datamodels import (
     ProjectionComputing,
     ProjectionOutModel,
     ProjectionOutModelNode,
+    ProjectionParametersModel,
     ProjectModel,
     ProjectStateModel,
     ProjectUpdateModel,
     QuickModelComputing,
     QuickModelInModel,
+    ReconciliateElementInModel,
+    ReconciliationModel,
     StaticFileModel,
+    TableAnnotationsModel,
+    TableBatchInModel,
+    TableOutModel,
     TextDatasetModel,
     UpdateComputing,
 )
