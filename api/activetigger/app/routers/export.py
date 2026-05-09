@@ -69,7 +69,12 @@ def export_projection(
     """
     test_rights(ProjectAction.EXPORT_DATA, current_user.username, project.name)
     try:
-        return project.projections.export(user_name=current_user.username, format=format)
+        return project.projections.export(
+            user_name=current_user.username,
+            format=format,
+            col_id=project.params.col_id,
+            id_mapping=project.data.index,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
