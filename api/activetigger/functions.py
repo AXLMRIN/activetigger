@@ -675,7 +675,7 @@ def matrix_to_label(row: list[int], id2label: dict[int, str]) -> list[str]:
     """
     if np.isscalar(row):
         return [id2label[int(row)]]
-    
+
     return [id2label[i] for i, value in enumerate(row) if value == 1]
 
 

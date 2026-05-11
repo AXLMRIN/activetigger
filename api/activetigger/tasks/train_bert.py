@@ -119,7 +119,7 @@ class CustomTrainer(Trainer):
         outputs = model(**inputs)
         logits = outputs.get("logits")
         if self._loss_fct is None:
-            weights = self.class_weights.to(logits.device) if self.class_weights is not None else None #fmt:skip
+            weights = self.class_weights.to(logits.device) if self.class_weights is not None else None  # fmt:skip
             if self.training_kind == "multiclass":  # AO:Left multiclass by default
                 self._loss_fct = nn.CrossEntropyLoss(weight=weights)
             elif self.training_kind == "multilabel":
