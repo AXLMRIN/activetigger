@@ -309,7 +309,7 @@ export function usePredictOnDataset() {
   const predictOnDataset = useCallback(
     async (projectSlug: string, scheme: string, model_name: string, data: TextDatasetModel) => {
       // do the new projects POST call
-      const res = await api.POST('/models/predict', {
+      const res = await api_withouttimeout.POST('/models/predict', {
         // POST has a body
         params: {
           query: {
