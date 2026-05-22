@@ -1,9 +1,14 @@
+import logging
+import threading
+import time
+from collections import deque
 from typing import Annotated
 
 from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Request,
 )
 
 from activetigger.app.dependencies import (
@@ -25,6 +30,46 @@ from activetigger.datamodels import (
 from activetigger.orchestrator import get_orchestrator
 
 router = APIRouter(tags=["users"])
+
+logger = logging.getLogger("activetigger.fastapi")
+
+
+class _SlidingWindowLimiter:
+    """Per-key sliding-window limiter. In-process; multi-worker setups multiply
+    the effective limit by the worker count, which is acceptable for the
+    unauthenticated reset endpoint but documented here for honesty."""
+
+    def __init__(self, max_calls: int, window_seconds: float, max_keys: int = 10_000):
+        self.max_calls = max_calls
+        self.window = window_seconds
+        self.max_keys = max_keys
+        self._buckets: dict[str, deque[float]] = {}
+        self._lock = threading.Lock()
+
+    def allow(self, key: str) -> bool:
+        now = time.monotonic()
+        cutoff = now - self.window
+        with self._lock:
+            bucket = self._buckets.get(key)
+            if bucket is None:
+                if len(self._buckets) >= self.max_keys:
+                    # Evict the oldest-touched key to bound memory.
+                    oldest = min(self._buckets, key=lambda k: self._buckets[k][-1])
+                    self._buckets.pop(oldest, None)
+                bucket = deque()
+                self._buckets[key] = bucket
+            while bucket and bucket[0] < cutoff:
+                bucket.popleft()
+            if len(bucket) >= self.max_calls:
+                return False
+            bucket.append(now)
+            return True
+
+
+# Reset is expensive (sends an email) and unauthenticated, so the limits are
+# tight. Tune by editing these constants; no live config needed.
+_reset_ip_limiter = _SlidingWindowLimiter(max_calls=5, window_seconds=3600)
+_reset_mail_limiter = _SlidingWindowLimiter(max_calls=3, window_seconds=3600)
 
 
 @router.post("/users/disconnect", dependencies=[Depends(verified_user)], tags=["users"])
@@ -171,8 +216,34 @@ def get_statistics(
 
 
 @router.post("/users/resetpwd", tags=["users"])
-def reset_password(mail: str) -> None:
+def reset_password(request: Request, mail: str) -> dict[str, str]:
+    """
+    Trigger a password reset email.
+
+    Always returns a constant response, regardless of whether the address is
+    registered or the mailer succeeded. This prevents account enumeration via
+    response variance and prevents the mailer's error messages from leaking.
+    Rate limits are applied per source IP and per target mail to bound abuse.
+    """
+    generic_response = {
+        "detail": "If this address is registered, a reset email has been sent.",
+    }
+
+    client_ip = request.client.host if request.client else "unknown"
+    normalized_mail = mail.strip().lower()
+
+    if not _reset_ip_limiter.allow(client_ip):
+        logger.warning("password reset rate-limited by IP %s", client_ip)
+        return generic_response
+    if not _reset_mail_limiter.allow(normalized_mail):
+        logger.warning("password reset rate-limited for mail (ip=%s)", client_ip)
+        return generic_response
+
     try:
         get_orchestrator().users.reset_password(mail)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    except Exception:
+        # Swallow on purpose: leaking "unknown user" vs "mailer failed" enables
+        # account enumeration. Log the real cause for operators instead.
+        logger.exception("password reset failed (ip=%s)", client_ip)
+
+    return generic_response
