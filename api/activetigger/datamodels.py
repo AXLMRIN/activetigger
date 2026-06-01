@@ -29,6 +29,16 @@ class ChangeEmailModel(BaseModel):
     password: str
 
 
+class ResetPasswordResultModel(BaseModel):
+    """
+    Result of an admin password reset: the newly generated password,
+    returned once to the requester.
+    """
+
+    username: str
+    new_password: str
+
+
 class PredictedLabel(BaseModel):
     label: str | None
     proba: float | None

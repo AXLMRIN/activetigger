@@ -250,6 +250,19 @@ class Users:
         hash_pwd = get_hash(password)
         self.db_manager.users_service.change_password(username, hash_pwd.decode("utf8"))
 
+    def admin_reset_password(self, target_username: str) -> str:
+        """
+        Generate a random password for a user, persist it and return it
+        (in plain text) so the caller can hand it back to the user once.
+        """
+        if target_username == "root":
+            raise Exception("Cannot reset root password from here")
+        # Ensures the user exists and is active
+        self.get_user(target_username)
+        new_password = secrets.token_urlsafe(12)
+        self.force_change_password(target_username, new_password)
+        return new_password
+
     def get_statistics(self, username: str) -> UserStatistics:
         """
         Get statistics for specific user

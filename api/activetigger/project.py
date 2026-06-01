@@ -17,10 +17,7 @@ from activetigger.bertopic_manager import Bertopic
 from activetigger.config import config
 from activetigger.data import Data
 from activetigger.datamodels import (
-    ActionModel,
     ActiveModel,
-    AnnotationModel,
-    AnnotationsDataModel,
     AuthUserModel,
     BertModelModel,
     BertopicComputing,
@@ -45,18 +42,12 @@ from activetigger.datamodels import (
     ProjectionComputing,
     ProjectionOutModel,
     ProjectionOutModelNode,
-    ProjectionParametersModel,
     ProjectModel,
     ProjectStateModel,
     ProjectUpdateModel,
     QuickModelComputing,
     QuickModelInModel,
-    ReconciliateElementInModel,
-    ReconciliationModel,
     StaticFileModel,
-    TableAnnotationsModel,
-    TableBatchInModel,
-    TableOutModel,
     TextDatasetModel,
     UpdateComputing,
 )
@@ -1198,7 +1189,7 @@ class Project:
         # for consistency with other exports
         column_name = (self.params.col_id or "id").removeprefix("dataset_")
         data = data.copy()
-        data[column_name] = data.index.map(self.data.index["id_external"])
+        data[column_name] = data.index.map(self.data.index["id_external"].to_dict())
         data = data.set_index(column_name)
 
         file_name = f"extract_schemes_{self.name}.{format}"

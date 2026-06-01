@@ -24,6 +24,7 @@ from activetigger.datamodels import (
     ChangeEmailModel,
     ChangePasswordModel,
     NewUserModel,
+    ResetPasswordResultModel,
     UserInDBModel,
     UserModel,
     UserStatistics,
@@ -168,6 +169,26 @@ def change_password(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/users/admin-resetpwd", dependencies=[Depends(verified_user)], tags=["users"])
+def admin_reset_password(
+    current_user: Annotated[UserInDBModel, Depends(verified_user)],
+    username: str,
+) -> ResetPasswordResultModel:
+    """
+    Reset a user's password (admin action). Generates a new random
+    password, stores it, and returns it once to the caller.
+    """
+    test_rights(ServerAction.MANAGE_USERS, current_user.username)
+    try:
+        new_password = get_orchestrator().users.admin_reset_password(username)
+        get_orchestrator().log_action(
+            current_user.username, f"ADMIN RESET PASSWORD: {username}", "all"
+        )
+        return ResetPasswordResultModel(username=username, new_password=new_password)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.post("/users/changemail", dependencies=[Depends(verified_user)], tags=["users"])

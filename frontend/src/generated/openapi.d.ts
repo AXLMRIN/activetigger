@@ -166,6 +166,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users/admin-resetpwd": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Admin Reset Password
+         * @description Reset a user's password (admin action). Returns the new password once.
+         */
+        post: operations["admin_reset_password_users_admin_resetpwd_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/auth/{action}": {
         parameters: {
             query?: never;
@@ -2258,6 +2278,16 @@ export interface components {
             /** Password */
             password: string;
         };
+        /**
+         * ResetPasswordResultModel
+         * @description Result of an admin password reset
+         */
+        ResetPasswordResultModel: {
+            /** Username */
+            username: string;
+            /** New Password */
+            new_password: string;
+        };
         /** CodebookModel */
         CodebookModel: {
             /** Content */
@@ -3910,6 +3940,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_reset_password_users_admin_resetpwd_post: {
+        parameters: {
+            query: {
+                username: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResetPasswordResultModel"];
                 };
             };
             /** @description Validation Error */

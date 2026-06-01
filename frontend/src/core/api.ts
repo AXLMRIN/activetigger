@@ -2077,6 +2077,28 @@ export function useChangePassword() {
 }
 
 /**
+ * Admin: reset a user's password.
+ * Returns the new password once, or null on failure.
+ */
+export function useResetUserPassword() {
+  const { notify } = useNotifications();
+  const resetUserPassword = useCallback(
+    async (username: string): Promise<string | null> => {
+      const res = await api.POST('/users/admin-resetpwd', {
+        params: { query: { username } },
+      });
+      if (res.error || !res.data) {
+        notify({ type: 'error', message: formatApiError(res.error) });
+        return null;
+      }
+      return res.data.new_password;
+    },
+    [notify],
+  );
+  return { resetUserPassword };
+}
+
+/**
  * Change email (contact)
  */
 export function useChangeEmail() {
