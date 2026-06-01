@@ -20,6 +20,15 @@ class ChangePasswordModel(BaseModel):
     pwd2: str
 
 
+class ChangeEmailModel(BaseModel):
+    """
+    Model for changing the current user's contact email
+    """
+
+    email: str
+    password: str
+
+
 class PredictedLabel(BaseModel):
     label: str | None
     proba: float | None

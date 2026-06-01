@@ -217,6 +217,32 @@ class Users:
         self.db_manager.users_service.change_password(username, hash_pwd.decode("utf8"))
         return None
 
+    def change_email(self, username: str, new_email: str, password: str) -> None:
+        """
+        Change contact email for a user.
+        Requires the current password to confirm the action.
+        """
+        new_email = new_email.strip()
+        if not new_email or "@" not in new_email:
+            raise Exception("Invalid email address")
+        user = self.get_user(username)
+        if not compare_to_hash(password, user.hashed_password):
+            raise Exception("Wrong password")
+        try:
+            existing = self.db_manager.users_service.get_user_by_mail(new_email)
+        except Exception:
+            existing = None
+        if existing is not None and existing != username:
+            raise Exception("Email already used by another account")
+        self.db_manager.users_service.change_contact(username, new_email)
+
+    def get_contact(self, username: str) -> str:
+        """
+        Get contact email for a user (empty string if not set)
+        """
+        user = self.db_manager.users_service.get_user(username)
+        return user.contact or ""
+
     def force_change_password(self, username: str, password: str) -> None:
         """
         Force change password for a user (no old password needed)

@@ -21,6 +21,7 @@ from activetigger.app.dependencies import (
 from activetigger.datamodels import (
     AuthActions,
     AuthUserModel,
+    ChangeEmailModel,
     ChangePasswordModel,
     NewUserModel,
     UserInDBModel,
@@ -91,7 +92,12 @@ def read_users_me(
     Information on current user
     """
     try:
-        return UserModel(username=current_user.username, status=current_user.status)
+        contact = get_orchestrator().users.get_contact(current_user.username)
+        return UserModel(
+            username=current_user.username,
+            status=current_user.status,
+            contact=contact,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -162,6 +168,22 @@ def change_password(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/users/changemail", dependencies=[Depends(verified_user)], tags=["users"])
+def change_email(
+    current_user: Annotated[UserInDBModel, Depends(verified_user)],
+    changemail: ChangeEmailModel,
+) -> None:
+    """
+    Change the contact email of the current user
+    """
+    try:
+        get_orchestrator().users.change_email(
+            current_user.username, changemail.email, changemail.password
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.post("/users/auth/{action}", dependencies=[Depends(verified_user)], tags=["users"])

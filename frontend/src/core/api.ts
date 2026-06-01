@@ -2068,12 +2068,47 @@ export function useChangePassword() {
         },
       });
       if (!res.error) notify({ type: 'success', message: 'Password changed.' });
-      return true;
+      return !res.error;
     },
     [notify],
   );
 
   return { changePassword };
+}
+
+/**
+ * Change email (contact)
+ */
+export function useChangeEmail() {
+  const { notify } = useNotifications();
+  const changeEmail = useCallback(
+    async (email: string, password: string) => {
+      const res = await api.POST('/users/changemail', {
+        body: { email, password },
+      });
+      if (res.error) {
+        notify({ type: 'error', message: formatApiError(res.error) });
+        return false;
+      }
+      notify({ type: 'success', message: 'Email updated.' });
+      return true;
+    },
+    [notify],
+  );
+
+  return { changeEmail };
+}
+
+/**
+ * Get current user info (username, status, contact email)
+ */
+export function useCurrentUser(refreshKey: unknown = 0) {
+  const result = useAsyncMemo(async () => {
+    const res = await api.GET('/users/me', {});
+    if (res.data && !res.error) return res.data;
+    return null;
+  }, [refreshKey]);
+  return { currentUser: getAsyncMemoData(result) };
 }
 
 export function useGetActiveUsers() {

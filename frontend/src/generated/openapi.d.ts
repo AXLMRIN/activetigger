@@ -146,6 +146,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users/changemail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Email
+         * @description Change the contact email of the current user
+         */
+        post: operations["change_email_users_changemail_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/auth/{action}": {
         parameters: {
             query?: never;
@@ -2228,6 +2248,16 @@ export interface components {
             /** Pwd2 */
             pwd2: string;
         };
+        /**
+         * ChangeEmailModel
+         * @description Model for changing the current user's contact email
+         */
+        ChangeEmailModel: {
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+        };
         /** CodebookModel */
         CodebookModel: {
             /** Content */
@@ -3870,6 +3900,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ChangePasswordModel"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_email_users_changemail_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeEmailModel"];
             };
         };
         responses: {
