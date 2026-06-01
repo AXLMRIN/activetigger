@@ -1719,6 +1719,11 @@ class Project:
             # log error if exists in the process execution
             exception = process.future.exception()
             if exception:
+                # User-initiated cancellations are not errors; clean up silently.
+                if process.state == "cancelled":
+                    print(f"Process {e.kind} cancelled by user")
+                    self.clean_process(e)
+                    continue
                 print(f"Error in {e.kind} : {exception}")
                 exception_str = str(exception)
                 if any(

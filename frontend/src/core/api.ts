@@ -2206,6 +2206,7 @@ export function useStopProcesses(projectSlug: string | null) {
         },
       });
       if (!res.error) notify({ type: 'success', message: 'Processes ended.' });
+      else notify({ type: 'error', message: formatApiError(res.error) });
       return true;
     },
     [notify, projectSlug],
