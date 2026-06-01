@@ -114,7 +114,7 @@ class CustomTrainer(Trainer):
         self._loss_fct = None  # avoid device mismatch
         print("CustomTrainer initialized with class weights:", self.class_weights)
 
-    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):  # ty: ignore[invalid-method-override]
         labels = inputs.pop("labels")
         outputs = model(**inputs)
         logits = outputs.get("logits")
@@ -129,9 +129,9 @@ class CustomTrainer(Trainer):
         if self.training_kind == "multiclass":
             label_indices = labels.argmax(dim=-1)
             loss = self._loss_fct(
-                logits.view(-1, self.model.config.num_labels), label_indices.view(-1)
+                logits.view(-1, self.model.config.num_labels),  # ty: ignore[unresolved-attribute]
+                label_indices.view(-1),
             )
-            print("custom loss", loss, flush=True)
         else:
             loss = self._loss_fct(logits, labels.float())
         return (loss, outputs) if return_outputs else loss
