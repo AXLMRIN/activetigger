@@ -324,6 +324,7 @@ class Orchestrator:
 
         return ServerStateModel(
             version=__version__,
+            mode=str(config.mode),
             cpu_only=config.cpu_only,
             active_projects=active_projects,
             queue=queue,

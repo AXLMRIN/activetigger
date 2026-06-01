@@ -3580,6 +3580,8 @@ export interface components {
         ServerStateModel: {
             /** Version */
             version: string;
+            /** Mode */
+            mode: string;
             /**
              * Cpu Only
              * @default false
