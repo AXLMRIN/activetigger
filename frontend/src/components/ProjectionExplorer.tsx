@@ -16,6 +16,8 @@ interface ProjectionExplorerProps {
   data: ProjectionOutModel;
   selectedId?: string;
   labelColorMapping: Record<string, string>;
+  schemeKind?: string;
+  availableLabels?: string[];
   containerClassName?: string;
   vizClassName?: string;
   panelClassName?: string;
@@ -37,6 +39,8 @@ export const ProjectionExplorer: FC<ProjectionExplorerProps> = ({
   data,
   selectedId: externalSelectedId,
   labelColorMapping,
+  schemeKind,
+  availableLabels,
   containerClassName,
   vizClassName,
   panelClassName,
@@ -130,6 +134,8 @@ export const ProjectionExplorer: FC<ProjectionExplorerProps> = ({
             frame={selectionConfig.frame}
             setFrameBbox={setFrameBbox}
             labelColorMapping={labelColorMapping}
+            schemeKind={schemeKind}
+            availableLabels={availableLabels}
           />
         </div>
 
