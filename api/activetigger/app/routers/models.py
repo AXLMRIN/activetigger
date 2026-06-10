@@ -4,6 +4,7 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Query,
 )
 
 from activetigger.app.dependencies import (
@@ -13,6 +14,7 @@ from activetigger.app.dependencies import (
     verified_user,
 )
 from activetigger.datamodels import (
+    MODEL_NAME_PATTERN,
     BertModelModel,
     ModelInformationsModel,
     QuickModelInModel,
@@ -24,6 +26,11 @@ from activetigger.orchestrator import get_orchestrator
 from activetigger.project import Project
 
 router = APIRouter(tags=["models"])
+
+# Reusable query-param validator for any user-supplied model name. Mirrors
+# the same regex used in BertModelModel.name so query routes (delete,
+# rename) can't slip a "../" past the body validator.
+ModelName = Annotated[str, Query(pattern=MODEL_NAME_PATTERN)]
 
 
 @router.post("/models/quick/train", dependencies=[Depends(verified_user)])
@@ -88,8 +95,8 @@ def delete_quickmodel(
 def rename_quickmodel(
     project: Annotated[Project, Depends(get_project)],
     current_user: Annotated[UserInDBModel, Depends(verified_user)],
-    former_name: str,
-    new_name: str,
+    former_name: ModelName,
+    new_name: ModelName,
 ) -> None:
     """
     Rename quickmodel
@@ -137,11 +144,18 @@ def get_quickmodel(
 
 @router.get("/models/information", dependencies=[Depends(verified_user)])
 def get_model_information(
-    project: Annotated[Project, Depends(get_project)], name: str, kind: str
+    project: Annotated[Project, Depends(get_project)],
+    current_user: Annotated[UserInDBModel, Depends(verified_user)],
+    name: ModelName,
+    kind: str,
 ) -> ModelInformationsModel:
     """
-    Get model information
+    Get model information.
+
+    Guarded by ProjectAction.GET so an authenticated user can't read
+    parameters / metrics for a project they don't have access to.
     """
+    test_rights(ProjectAction.GET, current_user.username, project.name)
     try:
         if kind == "bert":
             return project.languagemodels.get_informations(name)
@@ -158,7 +172,7 @@ def get_model_information(
 def predict(
     project: Annotated[Project, Depends(get_project)],
     current_user: Annotated[UserInDBModel, Depends(verified_user)],
-    model_name: str,
+    model_name: ModelName,
     scheme: str,
     kind: str,
     dataset_type: str = "annotable",
@@ -271,7 +285,7 @@ def post_bert(
 def delete_bert(
     project: Annotated[Project, Depends(get_project)],
     current_user: Annotated[UserInDBModel, Depends(verified_user)],
-    bert_name: str,
+    bert_name: ModelName,
 ) -> None:
     """
     Delete trained bert model
@@ -295,8 +309,8 @@ def delete_bert(
 def rename_bert(
     project: Annotated[Project, Depends(get_project)],
     current_user: Annotated[UserInDBModel, Depends(verified_user)],
-    former_name: str,
-    new_name: str,
+    former_name: ModelName,
+    new_name: ModelName,
 ) -> None:
     """
     Rename bertmodel
