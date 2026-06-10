@@ -4,10 +4,17 @@ from pathlib import Path
 from typing import Annotated, Any, Callable, Literal, Optional
 
 from pandas import DataFrame
-from pydantic import BaseModel, BeforeValidator, ConfigDict  # for dataframe
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field  # for dataframe
 from sklearn.base import BaseEstimator
 
 # Data model to use of the API
+
+# Model-name validator: safe filesystem character set with a length cap.
+# Used as a Pydantic constraint on BertModelModel.name to prevent path
+# traversal — the same string flows into Path.joinpath, shutil.make_archive,
+# shutil.rmtree, os.remove and DB primary keys, so it must never contain
+# "/", "..", or other path separators.
+MODEL_NAME_PATTERN = r"^[A-Za-z0-9_\-]{1,64}$"
 
 
 class ChangePasswordModel(BaseModel):
@@ -363,7 +370,7 @@ class BertModelModel(BaseModel):
 
     project_slug: str
     scheme: str
-    name: str
+    name: str = Field(pattern=MODEL_NAME_PATTERN)
     base_model: str
     params: LMParametersModel
     test_size: float = 0.2
