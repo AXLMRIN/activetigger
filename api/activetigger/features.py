@@ -232,9 +232,7 @@ class Features:
             new_content = pd.DataFrame(new_content)
 
         # change column name with a prefix
-        new_content.columns = [
-            f"{name}__{i}" for i in new_content.columns
-        ]  # ty: ignore[invalid-assignment]
+        new_content.columns = [f"{name}__{i}" for i in new_content.columns]  # ty: ignore[invalid-assignment]
 
         # read data, add the feature to the dataset and save
         content = pd.read_parquet(self.path_features)
